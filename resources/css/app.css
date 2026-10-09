@@ -148,13 +148,29 @@
     view-transition-name: green-panel;
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+/* Custom Scrollbar (4px — Acuan Standar VexaHost) */
+*::-webkit-scrollbar,
+::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track,
+::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent !important; }
+*::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb,
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #E4E4E7; border-radius: 4px; }
-.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #27272A; }
+html.dark *::-webkit-scrollbar-thumb,
+html.dark ::-webkit-scrollbar-thumb,
+.dark *::-webkit-scrollbar-thumb,
+.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #27272A !important; border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:hover,
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #D4D4D8; }
-.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3F3F46; }
+html.dark *::-webkit-scrollbar-thumb:hover,
+html.dark ::-webkit-scrollbar-thumb:hover,
+.dark *::-webkit-scrollbar-thumb:hover,
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3F3F46 !important; }
+*::-webkit-scrollbar-corner,
+::-webkit-scrollbar-corner { background: transparent !important; }
 
 /* No Scrollbar Utility */
 .no-scrollbar::-webkit-scrollbar {

@@ -97,18 +97,18 @@
        class="fixed top-0 left-0 z-50 h-screen w-full lg:w-64 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-r border-zinc-200/80 dark:border-zinc-900/80 flex flex-col shadow-xl lg:shadow-xs transition-transform duration-200 ease-out select-none">
 
     <!-- Branding Header -->
-    <div class="h-16 shrink-0 flex items-center justify-between px-5 sm:px-6 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-md">
-        <a href="{{ route($homeRoute) }}" class="flex items-center gap-2.5 group font-sans">
-            <img src="{{ asset('images/logo.png') }}" alt="VexaHost Logo" class="h-8 w-auto object-contain group-hover:scale-105 transition-transform duration-150">
-            <div class="flex flex-col">
-                <span class="text-sm font-black text-zinc-900 dark:text-white tracking-tight leading-none">Vexa<span class="text-emerald-600 dark:text-emerald-400">Host</span></span>
-                <span class="text-[9px] font-mono text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider mt-0.5">Admin Panel</span>
+    <div class="flex h-20 shrink-0 items-center gap-3.5 px-5">
+        <a href="{{ route($homeRoute) }}" class="flex min-w-0 items-center gap-3.5 font-sans">
+            <img src="{{ asset('images/logo.png') }}" alt="VexaHost Logo" class="h-11 w-auto shrink-0 object-contain">
+            <div class="flex min-w-0 flex-col">
+                <span class="truncate text-lg font-extrabold tracking-tight text-zinc-900 dark:text-white leading-tight">VexaHost</span>
+                <span class="truncate text-xs font-semibold tracking-wide text-zinc-500 dark:text-zinc-400 leading-tight">Admin Panel</span>
             </div>
         </a>
         <!-- Close Button (Mobile Only) -->
         <button @click="sidebarOpen = false" 
                 type="button" 
-                class="lg:hidden p-1.5 -mr-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                class="ml-auto lg:hidden p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
                 aria-label="Tutup Menu">
             <span class="material-symbols-outlined text-[20px] block">close</span>
         </button>
