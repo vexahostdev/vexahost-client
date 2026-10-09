@@ -10,7 +10,7 @@
 
 <div class="relative" x-data="{ userDropdown: false }" @click.outside="userDropdown = false" @keydown.escape.window="userDropdown = false">
     <button type="button" @click="userDropdown = ! userDropdown"
-            class="flex items-center gap-1.5 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors focus:outline-none"
+            class="flex items-center p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors focus:outline-none"
             :aria-expanded="userDropdown" aria-haspopup="true" aria-label="Menu akun" title="{{ $akun->name }}">
         <div class="rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0"
              style="width: 32px; height: 32px; min-width: 32px; min-height: 32px; border-radius: 9999px; aspect-ratio: 1 / 1;">
@@ -18,7 +18,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
         </div>
-        <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
     </button>
 
     <div x-show="userDropdown" x-cloak x-transition style="display: none;"

@@ -16,21 +16,31 @@
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400&display=swap" rel="stylesheet" />
         <script>
             // Inline theme check to prevent flickering (FOUC)
-            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
+            (function() {
+                var theme = localStorage.getItem('theme');
+                var isDark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.style.colorScheme = 'light';
+                }
+            })();
         </script>
         
-        <style>[x-cloak] { display: none !important; }</style>
+        <style>
+            [x-cloak] { display: none !important; }
+            html.dark { color-scheme: dark; background-color: #09090b; }
+            html.dark body { background-color: #09090b; color: #fafafa; }
+        </style>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     
-    <body class="font-sans antialiased overflow-x-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 transition-colors duration-300" 
+    <body class="font-sans antialiased overflow-x-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50" 
           x-data="appLayout">
         
-        <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors duration-300">
+        <div class="min-h-screen bg-zinc-50 dark:bg-zinc-950">
             
             @if(auth()->user()?->isClient())
                 @include('layouts.navigation-client')
@@ -41,14 +51,14 @@
             <div class="lg:pl-64 pt-16 min-h-screen flex flex-col w-full">
                 
                 @isset($header)
-                    <div class="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm relative z-20 transition-colors duration-300">
+                    <div class="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shadow-sm relative z-20">
                         <div class="max-w-[1720px] mx-auto py-5 px-4 sm:px-8">
                             {{ $header }}
                         </div>
                     </div>
                 @endisset
 
-                <main class="flex-1 px-4 sm:px-6 lg:px-8 py-5 pb-28 lg:pb-8 relative w-full max-w-[1720px] mx-auto">
+                <main class="flex-1 px-4 sm:px-6 lg:px-8 py-5 pb-8 relative w-full max-w-[1720px] mx-auto">
                     {{ $slot }}
                 </main>
 

@@ -1,10 +1,39 @@
+@php
+    $clientMenuTitle = match (true) {
+        request()->routeIs('client.dashboard') => 'Dashboard',
+        request()->routeIs('tickets.create') => 'Buat Tiket',
+        request()->routeIs('tickets.*') => 'Tiket Saya',
+        request()->routeIs('admin.tickets*', 'technician.tickets*') => 'Tiket Masuk',
+        request()->routeIs('projects.*') => 'Proyek',
+        request()->routeIs('invoices.*') => 'Tagihan & Pembayaran',
+        request()->routeIs('admin.users.*') => 'Pengguna',
+        request()->routeIs('admin.roles.*') => 'Role & Akses',
+        request()->routeIs('profile.*') => 'Profil Saya',
+        default => 'VexaHost Client',
+    };
+@endphp
+
 <!-- ========================================================================= -->
-<!-- 1. DESKTOP SIDEBAR (Visible only on Desktop lg:flex) -->
+<!-- 1. SIDEBAR (Mobile Slide-Over & Desktop Fixed) -->
 <!-- ========================================================================= -->
-<aside class="hidden lg:flex fixed top-0 left-0 z-50 h-screen bg-white dark:bg-zinc-950 border-r border-zinc-200/80 dark:border-zinc-800/80 flex-col w-64 shadow-xs select-none">
+<!-- Backdrop Overlay for Mobile -->
+<div x-show="sidebarOpen" 
+     x-cloak 
+     @click="sidebarOpen = false" 
+     class="fixed inset-0 z-40 bg-zinc-950/60 backdrop-blur-xs lg:hidden"
+     x-transition:enter="transition-opacity ease-linear duration-200"
+     x-transition:enter-start="opacity-0" 
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition-opacity ease-linear duration-200"
+     x-transition:leave-start="opacity-100" 
+     x-transition:leave-end="opacity-0"></div>
+
+<!-- Sidebar Drawer -->
+<aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+       class="fixed top-0 left-0 z-50 h-screen w-full lg:w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200/80 dark:border-zinc-800/80 flex flex-col shadow-xl lg:shadow-xs transition-transform duration-200 ease-out select-none">
     
     <!-- Branding Header -->
-    <div class="h-16 shrink-0 flex items-center justify-between px-6 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-md">
+    <div class="h-16 shrink-0 flex items-center justify-between px-5 sm:px-6 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-md">
         <a href="{{ route('client.dashboard') }}" class="flex items-center gap-2.5 group font-sans">
             <img src="{{ asset('images/logo.png') }}" alt="VexaHost Logo" class="h-8 w-auto object-contain group-hover:scale-105 transition-transform duration-300">
             <div class="flex flex-col">
@@ -12,6 +41,13 @@
                 <span class="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mt-0.5">Client Center</span>
             </div>
         </a>
+        <!-- Close Button (Mobile Only) -->
+        <button @click="sidebarOpen = false" 
+                type="button" 
+                class="lg:hidden p-1.5 -mr-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                aria-label="Tutup Menu">
+            <span class="material-symbols-outlined text-[20px] block">close</span>
+        </button>
     </div>
 
     <!-- Navigation Menu items -->
@@ -110,19 +146,41 @@
             @endcan
         </div>
     </nav>
+
+    <!-- Quick Logout in Sidebar Footer -->
+    <div class="shrink-0 border-t border-zinc-200/60 dark:border-zinc-800/60 p-3">
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" 
+                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">
+                <span class="material-symbols-outlined text-[18px]">logout</span>
+                <span>Keluar Akun</span>
+            </button>
+        </form>
+    </div>
 </aside>
 
 <!-- ========================================================================= -->
 <!-- 2. TOP HEADER (Desktop & Mobile) -->
 <!-- ========================================================================= -->
-<header class="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between px-4 sm:px-8 z-30 transition-all duration-300">
+<header class="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between px-4 sm:px-8 z-30">
     
-    <!-- Mobile Brand / Desktop Title -->
-    <div class="flex items-center gap-3">
-        <a href="{{ route('client.dashboard') }}" class="lg:hidden flex items-center gap-2 group">
-            <img src="{{ asset('images/logo.png') }}" alt="VexaHost Logo" class="h-7 w-auto object-contain">
-            <span class="text-xs font-black text-zinc-900 dark:text-white tracking-tight">VEXAHOST CLIENT</span>
-        </a>
+    <!-- Mobile Hamburger + Menu Name / Desktop Title -->
+    <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <!-- Hamburger Button (Mobile Only) -->
+        <button @click="sidebarOpen = true" 
+                type="button"
+                class="lg:hidden p-2 -ml-1 rounded-lg text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:outline-none shrink-0"
+                aria-label="Buka Menu">
+            <span class="material-symbols-outlined text-[24px] block">menu</span>
+        </button>
+
+        <!-- Active Menu Name (Mobile Only - No logo) -->
+        <h1 class="lg:hidden text-sm sm:text-base font-bold text-zinc-900 dark:text-white truncate">
+            {{ $clientMenuTitle }}
+        </h1>
+
+        <!-- Desktop Title & Status Badge -->
         <div class="hidden lg:flex items-center gap-3">
             <span class="text-xs font-bold text-zinc-800 dark:text-zinc-200">
                 VexaHost Client Panel
@@ -244,181 +302,3 @@
         <x-profile-menu />
     </div>
 </header>
-
-<!-- ========================================================================= -->
-<!-- 3. MOBILE BOTTOM NAVIGATION & DRAWER -->
-<!-- ========================================================================= -->
-<div x-data="{ mobileMenuOpen: false }">
-    
-    <!-- Fixed Bottom Navigation Bar -->
-    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-lg border-t border-zinc-200 dark:border-zinc-800 h-16 flex items-center justify-around px-2 shadow-lg select-none">
-        
-        <!-- 1. Dashboard -->
-        @php $isDashboardMobile = request()->routeIs('client.dashboard'); @endphp
-        <a href="{{ route('client.dashboard') }}" 
-           class="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors {{ $isDashboardMobile ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium' }}">
-            <span class="material-symbols-outlined text-[22px] {{ $isDashboardMobile ? 'scale-110 font-bold' : '' }} transition-transform">dashboard</span>
-            <span class="text-[10px] mt-0.5 tracking-tight">Dashboard</span>
-        </a>
-
-        <!-- 2. Tiket (Klien/Admin/Teknisi) -->
-        @can('tickets.create')
-            @php $isTicketsMobile = request()->routeIs('tickets.*'); @endphp
-            <a href="{{ route('tickets.index') }}" 
-               class="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors {{ $isTicketsMobile ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium' }}">
-                <span class="material-symbols-outlined text-[22px] {{ $isTicketsMobile ? 'scale-110 font-bold' : '' }} transition-transform">confirmation_number</span>
-                <span class="text-[10px] mt-0.5 tracking-tight">Tiket Saya</span>
-            </a>
-        @elsecan('tickets.manage')
-            @php $isAdminTicketsMobile = request()->routeIs('admin.tickets*'); @endphp
-            <a href="{{ route('admin.tickets') }}" 
-               class="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors {{ $isAdminTicketsMobile ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium' }}">
-                <span class="material-symbols-outlined text-[22px] {{ $isAdminTicketsMobile ? 'scale-110 font-bold' : '' }} transition-transform">support_agent</span>
-                <span class="text-[10px] mt-0.5 tracking-tight">Tiket Masuk</span>
-            </a>
-        @elsecan('tickets.handle')
-            @php $isTechTicketsMobile = request()->routeIs('technician.tickets*'); @endphp
-            <a href="{{ route('technician.tickets') }}" 
-               class="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors {{ $isTechTicketsMobile ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium' }}">
-                <span class="material-symbols-outlined text-[22px] {{ $isTechTicketsMobile ? 'scale-110 font-bold' : '' }} transition-transform">support_agent</span>
-                <span class="text-[10px] mt-0.5 tracking-tight">Tiket Masuk</span>
-            </a>
-        @else
-            @php $isTicketsMobile = request()->routeIs('tickets.*'); @endphp
-            <a href="{{ route('tickets.index') }}" 
-               class="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors {{ $isTicketsMobile ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium' }}">
-                <span class="material-symbols-outlined text-[22px] {{ $isTicketsMobile ? 'scale-110 font-bold' : '' }} transition-transform">confirmation_number</span>
-                <span class="text-[10px] mt-0.5 tracking-tight">Tiket</span>
-            </a>
-        @endcan
-
-        <!-- 3. Projects -->
-        @php $isProjectsMobile = request()->routeIs('projects.*'); @endphp
-        <a href="{{ route('projects.index') }}" 
-           class="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors {{ $isProjectsMobile ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium' }}">
-            <span class="material-symbols-outlined text-[22px] {{ $isProjectsMobile ? 'scale-110 font-bold' : '' }} transition-transform">view_kanban</span>
-            <span class="text-[10px] mt-0.5 tracking-tight">Proyek</span>
-        </a>
-
-        <!-- 4. Menu / Lainnya (Paling Kanan) -->
-        @php 
-            $isOtherActive = request()->routeIs('admin.users.*', 'admin.roles.*', 'profile.*'); 
-        @endphp
-        <button type="button" @click="mobileMenuOpen = true" 
-                class="flex flex-col items-center justify-center flex-1 h-full py-1 transition-colors {{ $isOtherActive ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium' }}">
-            <span class="material-symbols-outlined text-[22px]">grid_view</span>
-            <span class="text-[10px] mt-0.5 tracking-tight">Menu</span>
-        </button>
-    </nav>
-
-    <!-- Slide-Up Sheet Modal -->
-    <div x-show="mobileMenuOpen" 
-         x-cloak
-         class="fixed inset-0 z-50 flex flex-col justify-end"
-         style="display: none;">
-        
-        <!-- Backdrop -->
-        <div class="fixed inset-0 bg-zinc-950/60 backdrop-blur-sm transition-opacity"
-             x-show="mobileMenuOpen"
-             x-transition:enter="ease-out duration-200"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="ease-in duration-150"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             @click="mobileMenuOpen = false"></div>
-
-        <!-- Slide-Up Sheet Container -->
-        <div class="relative bg-white dark:bg-zinc-900 rounded-t-2xl p-5 border-t border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto z-10"
-             x-show="mobileMenuOpen"
-             x-transition:enter="ease-out duration-250 transform"
-             x-transition:enter-start="translate-y-full"
-             x-transition:enter-end="translate-y-0"
-             x-transition:leave="ease-in duration-200 transform"
-             x-transition:leave-start="translate-y-0"
-             x-transition:leave-end="translate-y-full">
-            
-            <!-- Drawer Header Handle -->
-            <div class="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-emerald-600 text-[22px]">apps</span>
-                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Menu Lainnya</h3>
-                </div>
-                <button type="button" @click="mobileMenuOpen = false" class="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
-                </button>
-            </div>
-
-            <!-- Grid Menu Items -->
-            <div class="grid grid-cols-2 gap-2.5">
-                <!-- Tagihan & Pembayaran -->
-                <a href="{{ route('invoices.index') }}" 
-                   class="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50 hover:border-emerald-500 transition-colors {{ request()->routeIs('invoices.*') ? 'ring-1 ring-emerald-500 font-bold' : '' }}">
-                    <span class="material-symbols-outlined text-emerald-600 text-[20px]">payments</span>
-                    <span class="text-xs text-zinc-800 dark:text-zinc-200">Tagihan</span>
-                </a>
-
-                @can('tickets.create')
-                    <!-- Buat Tiket Baru -->
-                    <a href="{{ route('tickets.create') }}" 
-                       class="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50 hover:border-emerald-500 transition-colors {{ request()->routeIs('tickets.create') ? 'ring-1 ring-emerald-500 font-bold' : '' }}">
-                        <span class="material-symbols-outlined text-emerald-600 text-[20px]">add_circle</span>
-                        <span class="text-xs text-zinc-800 dark:text-zinc-200">Buat Tiket</span>
-                    </a>
-                @endcan
-
-                @can('users.manage')
-                    <!-- Kelola Pengguna -->
-                    <a href="{{ route('admin.users.index') }}" 
-                       class="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50 hover:border-emerald-500 transition-colors {{ request()->routeIs('admin.users.*') ? 'ring-1 ring-emerald-500 font-bold' : '' }}">
-                        <span class="material-symbols-outlined text-emerald-500 text-[20px]">group</span>
-                        <span class="text-xs text-zinc-800 dark:text-zinc-200">Pengguna</span>
-                    </a>
-                @endcan
-
-                @can('roles.manage')
-                    <!-- Role & Akses -->
-                    <a href="{{ route('admin.roles.index') }}" 
-                       class="flex items-center gap-2.5 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50 hover:border-emerald-500 transition-colors {{ request()->routeIs('admin.roles.*') ? 'ring-1 ring-emerald-500 font-bold' : '' }}">
-                        <span class="material-symbols-outlined text-purple-500 text-[20px]">admin_panel_settings</span>
-                        <span class="text-xs text-zinc-800 dark:text-zinc-200">Role &amp; Akses</span>
-                    </a>
-                @endcan
-            </div>
-
-            <!-- Theme Switcher in Mobile Drawer -->
-            <div class="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <button type="button" @click="toggleTheme()"
-                        class="w-full flex items-center justify-between p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50 hover:border-emerald-500 transition-colors">
-                    <div class="flex items-center gap-2.5">
-                        <span class="material-symbols-outlined text-amber-400 text-[20px]" x-show="darkMode" x-cloak>light_mode</span>
-                        <span class="material-symbols-outlined text-zinc-600 dark:text-zinc-400 text-[20px]" x-show="!darkMode">dark_mode</span>
-                        <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Tema Tampilan</span>
-                    </div>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-200/60 dark:bg-zinc-800 text-[11px] font-medium text-zinc-700 dark:text-zinc-300">
-                        <span x-text="darkMode ? 'Mode Gelap' : 'Mode Terang'"></span>
-                    </span>
-                </button>
-            </div>
-
-            <!-- Profile & Logout Section -->
-            <div class="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
-                <a href="{{ route('profile.edit') }}" class="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 text-xs text-zinc-700 dark:text-zinc-300">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">account_circle</span>
-                        <span>Profil Saya ({{ Auth::user()->name }})</span>
-                    </div>
-                    <span class="material-symbols-outlined text-[16px] text-zinc-400">arrow_forward</span>
-                </a>
-
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-xs font-bold text-rose-600 dark:text-rose-400">
-                        <span class="material-symbols-outlined text-[18px]">logout</span>
-                        <span>Keluar Akun</span>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
