@@ -8,8 +8,15 @@ use App\Models\Project;
 use App\Models\Payment;
 use App\Models\MaintenanceSubscription;
 use App\Models\CompanySetting;
+use App\Mail\ProjectInvoiceMail;
+use App\Mail\SettlementInvoiceMail;
+use App\Mail\MaintenanceInvoiceMail;
+use App\Mail\PaymentReceiptMail;
 use App\Services\ActivityLogger;
+use App\Services\ProjectLifecycleService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class InvoiceController extends Controller
 {
@@ -18,7 +25,8 @@ class InvoiceController extends Controller
      */
     public function projectInvoice(Request $request, Project $project)
     {
-        $project->load(['lead', 'payments']);
+        app(ProjectLifecycleService::class)->syncInvoiceForProject($project);
+        $project->load(['lead', 'payments', 'latestInvoice']);
 
         $invoiceNumber = 'INV/' . $project->created_at->format('Ym') . '/' . str_pad($project->id, 4, '0', STR_PAD_LEFT);
         
@@ -208,7 +216,7 @@ class InvoiceController extends Controller
      */
     public function sendProjectInvoiceWa(Request $request, Project $project, \App\Services\WhatsApp\WhatsAppService $waService)
     {
-        $project->load(['lead', 'payments']);
+        $project->load(['lead', 'payments', 'invoices']);
         $lead = $project->lead;
         if (!$lead || empty($lead->kontak_wa)) {
             return back()->with('error', 'Nomor WhatsApp klien tidak ditemukan.');
@@ -236,16 +244,29 @@ class InvoiceController extends Controller
         $cleanInvoiceNo = str_replace('/', '-', $invoiceNumber);
         $filename = "Invoice-{$project->id}-{$cleanInvoiceNo}.pdf";
 
-        $bankInfo = $settings->bank_info_string;
         $brandName = $settings->brand_name ?: 'VexaHost';
-        $caption = "Halo Kak *{$lead->nama_kontak}*, terlampir dokumen Invoice resmi untuk proyek *{$project->nama_project}*.\n\n"
+        
+        $invoice = $project->latestInvoice ?: $project->invoices()->first();
+        if (!$invoice) {
+            $invoice = app(ProjectLifecycleService::class)->syncInvoiceForProject($project);
+        }
+        if (empty($invoice->payment_token)) {
+            $invoice->payment_token = Str::random(40);
+            $invoice->saveQuietly();
+        }
+        $directPayUrl = route('invoices.pay', $invoice->payment_token);
+
+        $clientName = $lead->nama_kontak ?: $lead->nama_usaha;
+        $caption = "Halo Kak *{$clientName}*, terlampir dokumen Invoice resmi untuk proyek *{$project->nama_project}*.\n\n"
                  . "📄 *No. Invoice:* {$invoiceNumber}\n"
                  . "💰 *Total Nilai:* Rp " . number_format($project->harga, 0, ',', '.') . "\n"
                  . "💳 *Sisa Tagihan:* Rp " . number_format($project->remaining_balance, 0, ',', '.') . "\n\n"
-                 . "Pembayaran dapat dilakukan via Transfer Bank atau scan QRIS pada lembar dokumen:\n"
-                 . "🏦 {$bankInfo}\n"
-                 . "📱 *QRIS:* Tersedia pada dokumen terlampir\n\n"
-                 . "Kirimkan bukti transfer via chat WhatsApp ini atau upload melalui portal klien. Terima kasih! 🚀\n- {$brandName}";
+                 . "⚡ *Link Pembayaran Langsung (Tanpa Perlu Login):*\n"
+                 . "👉 {$directPayUrl}\n\n"
+                 . "✨ *Metode Otomatis (Instan 24 Jam):*\n"
+                 . "• QRIS Semua Bank & E-Wallet (BCA, Livin, GoPay, OVO, Dana)\n"
+                 . "• Virtual Account Bank Mandiri & BNI\n\n"
+                 . "Kwitansi resmi lunas bertanda tangan digital terbit otomatis setelah pembayaran berhasil tanpa perlu konfirmasi manual. Terima kasih! 🚀\n- {$brandName}";
 
         $res = $waService->sendMediaWhatsApp(
             to: $lead->kontak_wa,
@@ -262,6 +283,60 @@ class InvoiceController extends Controller
         }
 
         return back()->with('error', "Gagal mengirim PDF Invoice via WhatsApp: " . ($res['message'] ?? 'Terjadi kesalahan'));
+    }
+
+    /**
+     * Dispatch official PDF Invoice to client via Email.
+     */
+    public function sendProjectInvoiceEmail(Request $request, Project $project)
+    {
+        $project->load(['lead', 'payments', 'invoices']);
+        $lead = $project->lead;
+        if (!$lead || empty($lead->email)) {
+            return back()->with('error', 'Alamat email klien tidak ditemukan pada data Lead/Proyek.');
+        }
+
+        $invoiceNumber = 'INV/' . $project->created_at->format('Ym') . '/' . str_pad($project->id, 4, '0', STR_PAD_LEFT);
+        $settings = CompanySetting::get();
+
+        $data = [
+            'project' => $project,
+            'lead' => $lead,
+            'invoiceNumber' => $invoiceNumber,
+            'invoiceDate' => $project->created_at->translatedFormat('d F Y'),
+            'dueDate' => $project->created_at->addDays(7)->translatedFormat('d F Y'),
+            'bankInfo' => $settings->bank_info_string,
+            'qrisBase64' => $settings->qris_base64,
+            'logoBase64' => $settings->logo_base64,
+            'settings' => $settings,
+            'isPdf' => true,
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.invoices.project', $data)->setPaper('a4', 'portrait');
+        $pdfContent = $pdf->output();
+        $cleanInvoiceNo = str_replace('/', '-', $invoiceNumber);
+        $filename = "Invoice-{$project->id}-{$cleanInvoiceNo}.pdf";
+
+        $invoice = $project->latestInvoice ?: $project->invoices()->first();
+        if (!$invoice) {
+            $invoice = app(ProjectLifecycleService::class)->syncInvoiceForProject($project);
+        }
+        if (empty($invoice->payment_token)) {
+            $invoice->payment_token = Str::random(40);
+            $invoice->saveQuietly();
+        }
+        $directPayUrl = route('invoices.pay', $invoice->payment_token);
+
+        try {
+            Mail::to($lead->email)->send(
+                new ProjectInvoiceMail($project, $invoice, $settings, $pdfContent, $filename, $directPayUrl)
+            );
+
+            ActivityLogger::log('send_invoice_email', "Mengirim invoice PDF {$invoiceNumber} via Email ke {$lead->email}", 'Project', $project->id);
+            return back()->with('success', "✉️ Dokumen PDF Invoice {$invoiceNumber} berhasil dikirim ke email {$lead->email}!");
+        } catch (\Throwable $e) {
+            return back()->with('error', "Gagal mengirim Email Invoice: " . $e->getMessage());
+        }
     }
 
     /**
@@ -300,11 +375,17 @@ class InvoiceController extends Controller
         $filename = "Kwitansi-{$payment->id}-{$cleanReceiptNo}.pdf";
 
         $brandName = $settings->brand_name ?: 'VexaHost';
-        $caption = "Halo Kak *{$lead->nama_kontak}*, terima kasih! Pembayaran sebesar *Rp " . number_format($payment->jumlah, 0, ',', '.') . "* untuk *{$project->nama_project}* telah kami terima dan diverifikasi.\n\n"
+        $invoice = $project?->latestInvoice ?: $project?->invoices()->first();
+        $receiptUrl = $invoice?->payment_token ? route('invoices.pay', $invoice->payment_token) : null;
+        $linkText = $receiptUrl ? "\n\n📄 *Lihat Kwitansi Digital (Tanpa Login):*\n👉 {$receiptUrl}" : "";
+        $clientName = $lead->nama_kontak ?: $lead->nama_usaha;
+
+        $caption = "Halo Kak *{$clientName}*, terima kasih! 🙏\n\n"
+                 . "Pembayaran sebesar *Rp " . number_format($payment->jumlah, 0, ',', '.') . "* untuk *{$project->nama_project}* telah kami terima dan diverifikasi sah.\n\n"
                  . "🧾 *No. Kwitansi:* {$receiptNumber}\n"
                  . "📅 *Tanggal:* {$data['receiptDate']}\n"
                  . "💵 *Jumlah:* Rp " . number_format($payment->jumlah, 0, ',', '.') . " ({$terbilang})\n\n"
-                 . "Terlampir bukti Kwitansi resmi {$brandName}. Terima kasih atas kerja samanya! 🙏✨";
+                 . "Terlampir bukti Kwitansi resmi {$brandName}.{$linkText}\n\nTerima kasih atas kerja samanya! 🙏✨";
 
         $res = $waService->sendMediaWhatsApp(
             to: $lead->kontak_wa,
@@ -324,6 +405,55 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Dispatch official PDF Kwitansi (Payment Receipt) to client via Email.
+     */
+    public function sendPaymentReceiptEmail(Request $request, Payment $payment)
+    {
+        $payment->load('project.lead');
+        $project = $payment->project;
+        $lead = $project?->lead;
+
+        if (!$lead || empty($lead->email)) {
+            return back()->with('error', 'Alamat email klien tidak ditemukan pada data Lead/Proyek.');
+        }
+
+        $receiptNumber = 'KW/' . ($payment->tanggal ? $payment->tanggal->format('Ym') : now()->format('Ym')) . '/' . str_pad($payment->id, 4, '0', STR_PAD_LEFT);
+        $terbilang = $this->terbilang($payment->jumlah) . ' Rupiah';
+        $settings = CompanySetting::get();
+
+        $data = [
+            'payment' => $payment,
+            'project' => $project,
+            'lead' => $lead,
+            'receiptNumber' => $receiptNumber,
+            'receiptDate' => $payment->tanggal ? $payment->tanggal->translatedFormat('d F Y') : now()->translatedFormat('d F Y'),
+            'terbilang' => $terbilang,
+            'logoBase64' => $settings->logo_base64,
+            'settings' => $settings,
+            'isPdf' => true,
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.invoices.receipt', $data)->setPaper('a4', 'portrait');
+        $pdfContent = $pdf->output();
+        $cleanReceiptNo = str_replace('/', '-', $receiptNumber);
+        $filename = "Kwitansi-{$payment->id}-{$cleanReceiptNo}.pdf";
+
+        $invoice = $project?->latestInvoice ?: $project?->invoices()->first();
+        $receiptUrl = $invoice?->payment_token ? route('invoices.pay', $invoice->payment_token) : null;
+
+        try {
+            Mail::to($lead->email)->send(
+                new PaymentReceiptMail($payment, $invoice, $settings, $pdfContent, $filename, $receiptNumber, $receiptUrl)
+            );
+
+            ActivityLogger::log('send_receipt_email', "Mengirim kwitansi PDF {$receiptNumber} via Email ke {$lead->email}", 'Payment', $payment->id);
+            return back()->with('success', "✉️ Dokumen PDF Kwitansi {$receiptNumber} berhasil dikirim ke email {$lead->email}!");
+        } catch (\Throwable $e) {
+            return back()->with('error', "Gagal mengirim Email Kwitansi: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Generate and dispatch official PDF Maintenance Invoice to client via WhatsApp Gateway.
      */
     public function sendMaintenanceInvoiceWa(Request $request, MaintenanceSubscription $subscription, \App\Services\WhatsApp\WhatsAppService $waService)
@@ -335,7 +465,14 @@ class InvoiceController extends Controller
             return back()->with('error', 'Nomor WhatsApp klien tidak ditemukan.');
         }
 
-        $invoiceNumber = 'INV-MNT/' . now()->format('Ym') . '/' . str_pad($subscription->id, 4, '0', STR_PAD_LEFT);
+        $invoice = $subscription->getOrCreateInvoice();
+        if (empty($invoice->payment_token)) {
+            $invoice->payment_token = Str::random(40);
+            $invoice->saveQuietly();
+        }
+        $directPayUrl = route('invoices.pay', $invoice->payment_token);
+
+        $invoiceNumber = $invoice->invoice_number;
         $dueDate = $subscription->tanggal_jatuh_tempo_berikutnya ? $subscription->tanggal_jatuh_tempo_berikutnya->translatedFormat('d F Y') : now()->addDays(7)->translatedFormat('d F Y');
         $settings = CompanySetting::get();
 
@@ -359,16 +496,18 @@ class InvoiceController extends Controller
         $cleanMntNo = str_replace('/', '-', $invoiceNumber);
         $filename = "Invoice-Maintenance-{$subscription->id}-{$cleanMntNo}.pdf";
 
-        $bankInfo = $settings->bank_info_string;
         $brandName = $settings->brand_name ?: 'VexaHost';
-        $caption = "Halo Kak *{$lead->nama_kontak}*, terlampir Invoice Pemeliharaan (Maintenance) Website & Server untuk periode berikutnya.\n\n"
+        $clientName = $lead->nama_kontak ?: $lead->nama_usaha;
+        $caption = "Halo Kak *{$clientName}*, terlampir Invoice Pemeliharaan (Maintenance) Website & Server untuk periode berikutnya.\n\n"
                  . "📄 *No. Invoice:* {$invoiceNumber}\n"
                  . "💰 *Biaya Bulanan:* Rp " . number_format($subscription->harga_bulanan, 0, ',', '.') . "\n"
                  . "⏰ *Jatuh Tempo:* {$dueDate}\n\n"
-                 . "Pembayaran dapat dilakukan via Transfer Bank atau scan QRIS pada dokumen:\n"
-                 . "🏦 {$bankInfo}\n"
-                 . "📱 *QRIS:* Tersedia pada dokumen terlampir\n\n"
-                 . "Kirimkan bukti transfer via WhatsApp ini atau upload melalui portal klien. Terima kasih! 🙏\n- {$brandName}";
+                 . "⚡ *Link Pembayaran Langsung (Tanpa Perlu Login):*\n"
+                 . "👉 {$directPayUrl}\n\n"
+                 . "✨ *Metode Otomatis (Instan 24 Jam):*\n"
+                 . "• QRIS Semua Bank & E-Wallet (BCA, Livin, GoPay, OVO, Dana)\n"
+                 . "• Virtual Account Bank Mandiri & BNI\n\n"
+                 . "Kwitansi pelunasan resmi akan terbit otomatis setelah pembayaran berhasil tanpa perlu konfirmasi manual. Terima kasih! 🙏\n- {$brandName}";
 
         $res = $waService->sendMediaWhatsApp(
             to: $lead->kontak_wa,
@@ -388,11 +527,66 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Dispatch official PDF Maintenance Invoice to client via Email.
+     */
+    public function sendMaintenanceInvoiceEmail(Request $request, MaintenanceSubscription $subscription)
+    {
+        $subscription->load(['lead', 'project']);
+        $lead = $subscription->lead;
+
+        if (!$lead || empty($lead->email)) {
+            return back()->with('error', 'Alamat email klien tidak ditemukan pada data Maintenance.');
+        }
+
+        $invoice = $subscription->getOrCreateInvoice();
+        if (empty($invoice->payment_token)) {
+            $invoice->payment_token = Str::random(40);
+            $invoice->saveQuietly();
+        }
+        $directPayUrl = route('invoices.pay', $invoice->payment_token);
+
+        $invoiceNumber = $invoice->invoice_number;
+        $dueDate = $subscription->tanggal_jatuh_tempo_berikutnya ? $subscription->tanggal_jatuh_tempo_berikutnya->translatedFormat('d F Y') : now()->addDays(7)->translatedFormat('d F Y');
+        $settings = CompanySetting::get();
+
+        $data = [
+            'subscription' => $subscription,
+            'lead' => $lead,
+            'project' => $subscription->project,
+            'invoiceNumber' => $invoiceNumber,
+            'invoiceDate' => now()->translatedFormat('d F Y'),
+            'dueDate' => $dueDate,
+            'bankInfo' => $settings->bank_info_string,
+            'qrisBase64' => $settings->qris_base64,
+            'logoBase64' => $settings->logo_base64,
+            'settings' => $settings,
+            'isPdf' => true,
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.invoices.maintenance', $data)->setPaper('a4', 'portrait');
+        $pdfContent = $pdf->output();
+        $cleanMntNo = str_replace('/', '-', $invoiceNumber);
+        $filename = "Invoice-Maintenance-{$subscription->id}-{$cleanMntNo}.pdf";
+
+        try {
+            Mail::to($lead->email)->send(
+                new MaintenanceInvoiceMail($subscription, $invoice, $settings, $pdfContent, $filename, $directPayUrl, $invoiceNumber, $dueDate)
+            );
+
+            ActivityLogger::log('send_maintenance_invoice_email', "Mengirim invoice maintenance PDF {$invoiceNumber} via Email ke {$lead->email}", 'MaintenanceSubscription', $subscription->id);
+            return back()->with('success', "✉️ Dokumen PDF Invoice Maintenance {$invoiceNumber} berhasil dikirim ke email {$lead->email}!");
+        } catch (\Throwable $e) {
+            return back()->with('error', "Gagal mengirim Email Invoice Maintenance: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Show Project Settlement Invoice (HTML, PDF, Word).
      */
     public function settlementInvoice(Request $request, Project $project)
     {
-        $project->load(['lead', 'payments']);
+        app(ProjectLifecycleService::class)->syncInvoiceForProject($project);
+        $project->load(['lead', 'payments', 'latestInvoice']);
 
         $settlementNumber = 'INV-SETTLE/' . ($project->created_at ? $project->created_at->format('Ym') : now()->format('Ym')) . '/' . str_pad($project->id, 4, '0', STR_PAD_LEFT);
         $terbilang = $this->terbilang($project->remaining_balance) . ' Rupiah';
@@ -440,7 +634,7 @@ class InvoiceController extends Controller
      */
     public function sendSettlementInvoiceWa(Request $request, Project $project, \App\Services\WhatsApp\WhatsAppService $waService)
     {
-        $project->load(['lead', 'payments']);
+        $project->load(['lead', 'payments', 'invoices']);
         $lead = $project->lead;
         if (!$lead || empty($lead->kontak_wa)) {
             return back()->with('error', 'Nomor WhatsApp klien tidak ditemukan.');
@@ -475,17 +669,30 @@ class InvoiceController extends Controller
         $cleanSettlementNo = str_replace('/', '-', $settlementNumber);
         $filename = "Tagihan-Pelunasan-{$project->id}-{$cleanSettlementNo}.pdf";
 
-        $bankInfo = $settings->bank_info_string;
         $brandName = $settings->brand_name ?: 'VexaHost';
-        $caption = "Halo Kak *{$lead->nama_kontak}*, terlampir dokumen resmi *Invoice Tagihan Pelunasan* untuk proyek *{$project->nama_project}*.\n\n"
+        
+        $invoice = $project->latestInvoice ?: $project->invoices()->first();
+        if (!$invoice) {
+            $invoice = app(ProjectLifecycleService::class)->syncInvoiceForProject($project);
+        }
+        if (empty($invoice->payment_token)) {
+            $invoice->payment_token = Str::random(40);
+            $invoice->saveQuietly();
+        }
+        $directPayUrl = route('invoices.pay', $invoice->payment_token);
+        $clientName = $lead->nama_kontak ?: $lead->nama_usaha;
+
+        $caption = "Halo Kak *{$clientName}*, terlampir dokumen resmi *Invoice Tagihan Pelunasan* untuk proyek *{$project->nama_project}*.\n\n"
                  . "📄 *No. Dokumen:* {$settlementNumber}\n"
                  . "💰 *Total Nilai Proyek:* Rp " . number_format($project->harga, 0, ',', '.') . "\n"
                  . "💵 *DP Diterima:* Rp " . number_format($project->total_paid, 0, ',', '.') . "\n"
                  . "💳 *Sisa Tagihan Pelunasan:* Rp " . number_format($project->remaining_balance, 0, ',', '.') . "\n\n"
-                 . "Pengerjaan telah selesai ditinjau (*Review Klien*). Mohon selesaikan pelunasan ke rekening resmi kami sebelum peluncuran resmi (*Go-Live*) & serah terima akun sistem:\n"
-                 . "🏦 {$bankInfo}\n"
-                 . "📱 *QRIS:* Tersedia pada dokumen PDF terlampir\n\n"
-                 . "Kirimkan bukti transfer melalui WhatsApp ini atau upload melalui Client Panel. Terima kasih banyak atas kerjasamanya! 🚀\n- {$brandName}";
+                 . "⚡ *Link Pelunasan Langsung (Tanpa Perlu Login):*\n"
+                 . "👉 {$directPayUrl}\n\n"
+                 . "✨ *Metode Otomatis (Instan 24 Jam):*\n"
+                 . "• QRIS Semua Bank & E-Wallet (BCA, Livin, GoPay, OVO, Dana)\n"
+                 . "• Virtual Account Bank Mandiri & BNI\n\n"
+                 . "Kwitansi lunas bertanda tangan digital terbit seketika tanpa perlu konfirmasi manual. Terima kasih banyak atas kerjasamanya! 🚀\n- {$brandName}";
 
         $res = $waService->sendMediaWhatsApp(
             to: $lead->kontak_wa,
@@ -502,5 +709,66 @@ class InvoiceController extends Controller
         }
 
         return back()->with('error', "Gagal mengirim PDF Tagihan Pelunasan: " . ($res['message'] ?? 'Terjadi kesalahan'));
+    }
+
+    /**
+     * Dispatch official PDF Settlement Invoice to client via Email.
+     */
+    public function sendSettlementInvoiceEmail(Request $request, Project $project)
+    {
+        $project->load(['lead', 'payments', 'invoices']);
+        $lead = $project->lead;
+        if (!$lead || empty($lead->email)) {
+            return back()->with('error', 'Alamat email klien tidak ditemukan pada data Lead/Proyek.');
+        }
+
+        if ($project->remaining_balance <= 0) {
+            return back()->with('info', "Proyek {$project->nama_project} sudah lunas, tidak ada sisa tagihan pelunasan.");
+        }
+
+        $settlementNumber = 'INV-SETTLE/' . ($project->created_at ? $project->created_at->format('Ym') : now()->format('Ym')) . '/' . str_pad($project->id, 4, '0', STR_PAD_LEFT);
+        $terbilang = $this->terbilang($project->remaining_balance) . ' Rupiah';
+        $settings = CompanySetting::get();
+
+        $data = [
+            'project' => $project,
+            'lead' => $lead,
+            'settlementNumber' => $settlementNumber,
+            'settlementDate' => now()->translatedFormat('d F Y'),
+            'dueDate' => now()->addDays(5)->translatedFormat('d F Y'),
+            'terbilang' => $terbilang,
+            'bankInfo' => $settings->bank_info_string,
+            'qrisBase64' => $settings->qris_base64,
+            'logoBase64' => $settings->logo_base64,
+            'signatureBase64' => $settings->signature_base64,
+            'settings' => $settings,
+            'isPdf' => true,
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.invoices.settlement', $data)->setPaper('a4', 'portrait');
+        $pdfContent = $pdf->output();
+        $cleanSettlementNo = str_replace('/', '-', $settlementNumber);
+        $filename = "Tagihan-Pelunasan-{$project->id}-{$cleanSettlementNo}.pdf";
+
+        $invoice = $project->latestInvoice ?: $project->invoices()->first();
+        if (!$invoice) {
+            $invoice = app(ProjectLifecycleService::class)->syncInvoiceForProject($project);
+        }
+        if (empty($invoice->payment_token)) {
+            $invoice->payment_token = Str::random(40);
+            $invoice->saveQuietly();
+        }
+        $directPayUrl = route('invoices.pay', $invoice->payment_token);
+
+        try {
+            Mail::to($lead->email)->send(
+                new SettlementInvoiceMail($project, $invoice, $settings, $pdfContent, $filename, $directPayUrl, $settlementNumber)
+            );
+
+            ActivityLogger::log('send_settlement_email', "Mengirim tagihan pelunasan PDF {$settlementNumber} via Email ke {$lead->email}", 'Project', $project->id);
+            return back()->with('success', "✉️ Dokumen PDF Tagihan Pelunasan {$settlementNumber} berhasil dikirim ke email {$lead->email}!");
+        } catch (\Throwable $e) {
+            return back()->with('error', "Gagal mengirim Email Tagihan Pelunasan: " . $e->getMessage());
+        }
     }
 }

@@ -127,13 +127,22 @@ class WhatsAppTemplates
         $nama = $lead->nama_kontak ?: $lead->nama_usaha;
         $jumlah = number_format($subscription->harga_bulanan, 0, ',', '.');
         $jatuhTempo = $subscription->tanggal_jatuh_tempo_berikutnya ? $subscription->tanggal_jatuh_tempo_berikutnya->translatedFormat('d F Y') : 'akhir bulan ini';
-        $infoBank = $bankInfo ?: ($cfg->bank_info_string ?: "{$cfg->bank_name} {$cfg->bank_account_number} a.n {$cfg->bank_account_holder}");
         $brand = $cfg->brand_name ?: 'VexaHost';
 
-        return "Halo Kak {$nama}, pengingat santai untuk tagihan layanan pemeliharaan & maintenance website bulan ini sebesar *Rp {$jumlah}* dengan jatuh tempo tanggal *{$jatuhTempo}*.\n\n"
-             . "💳 *Pembayaran dapat ditransfer ke rekening resmi:*\n"
-             . "🏦 {$infoBank}\n\n"
-             . "Jika sudah transfer, mohon konfirmasi bukti transfernya ke nomor ini ya. Terima kasih banyak atas kerjasamanya bersama {$brand}! 🙏✨";
+        $invoice = $subscription->latestInvoice ?: $subscription->getOrCreateInvoice();
+        if (empty($invoice->payment_token)) {
+            $invoice->payment_token = \Illuminate\Support\Str::random(40);
+            $invoice->saveQuietly();
+        }
+        $directPayUrl = route('invoices.pay', $invoice->payment_token);
+
+        return "Halo Kak {$nama}, pengingat santai untuk tagihan layanan pemeliharaan (maintenance) website & cloud server bulan ini sebesar *Rp {$jumlah}* dengan jatuh tempo tanggal *{$jatuhTempo}*.\n\n"
+             . "⚡ *Link Pembayaran Langsung (Tanpa Perlu Login):*\n"
+             . "👉 {$directPayUrl}\n\n"
+             . "✨ *Metode Pembayaran Otomatis 24 Jam:*\n"
+             . "• QRIS Semua Bank & E-Wallet (BCA, Livin, GoPay, OVO, Dana)\n"
+             . "• Virtual Account Bank Mandiri & BNI\n\n"
+             . "Kwitansi pelunasan resmi otomatis terbit setelah pembayaran berhasil tanpa perlu konfirmasi bukti manual. Terima kasih banyak atas kerjasamanya bersama {$brand}! 🙏✨";
     }
 
     /**
@@ -146,9 +155,17 @@ class WhatsAppTemplates
         $total = number_format($project->harga, 0, ',', '.');
         $terbayar = number_format($project->total_paid, 0, ',', '.');
         $sisa = number_format($project->remaining_balance, 0, ',', '.');
-        $infoBank = $bankInfo ?: ($cfg->bank_info_string ?: "{$cfg->bank_name} {$cfg->bank_account_number} a.n {$cfg->bank_account_holder}");
-        $portalUrl = config('app.url', 'https://client.vexahostcloud.my.id');
         $brand = $cfg->brand_name ?: 'VexaHost';
+
+        $invoice = $project->latestInvoice ?: $project->invoices()->first();
+        if ($invoice && empty($invoice->payment_token)) {
+            $invoice->payment_token = \Illuminate\Support\Str::random(40);
+            $invoice->saveQuietly();
+        }
+        $directPayUrl = $invoice ? route('invoices.pay', $invoice->payment_token) : null;
+        $payLinkSection = $directPayUrl 
+            ? "⚡ *Link Pelunasan Langsung (Tanpa Perlu Login):*\n👉 {$directPayUrl}\n\n(Bisa bayar via QRIS instan semua bank atau Virtual Account Mandiri / BNI)\n\n"
+            : "";
 
         $previewSection = $project->link_website ? "🌐 Link Pratinjau Demo: {$project->link_website}\n\n" : "";
 
@@ -159,12 +176,8 @@ class WhatsAppTemplates
              . "• Total Nilai Proyek: Rp {$total}\n"
              . "• Uang Muka (DP) Diterima: Rp {$terbayar}\n"
              . "• *Sisa Tagihan Pelunasan: Rp {$sisa}*\n\n"
-             . "Sebelum tim kami melakukan peluncuran resmi (*Go-Live*) ke domain utama dan serah terima akses penuh sistem, mohon selesaikan pembayaran pelunasan ke rekening resmi kami:\n"
-             . "🏦 *{$infoBank}*\n"
-             . "📱 *QRIS:* Tersedia pada lembar invoice resmi\n\n"
-             . "Kakak dapat memeriksa invoice dan mengunggah bukti transfer pelunasan melalui Client Panel:\n"
-             . "🔗 {$portalUrl}\n\n"
-             . "Atau cukup balas chat WhatsApp ini dengan menyertakan bukti transfer. Terima kasih banyak atas kerjasamanya bersama {$brand}! 🙏🚀";
+             . $payLinkSection
+             . "Setelah pelunasan diselesaikan, tim kami akan langsung melakukan peluncuran resmi (*Go-Live*) ke domain utama dan serah terima hak akses penuh sistem. Kwitansi resmi lunas terbit otomatis. Terima kasih banyak atas kerjasamanya bersama {$brand}! 🙏🚀";
     }
 
     /**
@@ -225,28 +238,24 @@ class WhatsAppTemplates
     }
 
     /**
-     * Template: Info Rekening Pembayaran Resmi & Ketentuan DP (100% dari CompanySetting).
+     * Template: Info Metode Pembayaran Resmi & Ketentuan DP (Otomatis via Payment Gateway).
      */
     public static function paymentAccountInfo(?CompanySetting $settings = null): string
     {
         $cfg = self::resolveSettings($settings);
         $brand = $cfg->brand_name ?: 'VexaHost';
         $company = $cfg->company_name ?: 'PT DESTINARA CHAKRAWALA ARTHA';
-        $bank = $cfg->bank_name ?: '-';
-        $accNo = $cfg->bank_account_number ?: '-';
-        $accHolder = $cfg->bank_account_holder ?: '-';
         $phone = $cfg->phone_support ?: '0858-0874-9131';
 
-        return "Halo Kak, untuk pembayaran pengerjaan proyek di *{$brand}* ({$company}), pembayaran resmi hanya sah apabila ditransfer melalui rekening atau QRIS resmi kami berikut:\n\n"
-             . "🏦 *Bank Tujuan:* {$bank}\n"
-             . "💳 *Nomor Rekening:* {$accNo}\n"
-             . "👤 *Atas Nama:* {$accHolder}\n\n"
-             . "📱 *Pembayaran QRIS:* Tersedia scan QRIS resmi pada dokumen invoice penagihan resmi.\n\n"
+        return "Halo Kak, untuk pembayaran pengerjaan proyek di *{$brand}* ({$company}), seluruh transaksi dilakukan secara resmi dan otomatis melalui *Link Pembayaran Invoice Resmi* kami:\n\n"
+             . "✨ *Metode Pembayaran Otomatis (Aktif 24 Jam):*\n"
+             . "• *QRIS Instan:* Mendukung seluruh M-Banking & E-Wallet (BCA, Livin' Mandiri, BRImo, BNI, GoPay, OVO, Dana, ShopeePay)\n"
+             . "• *Virtual Account Bank:* Bank Mandiri & Bank BNI\n\n"
              . "📌 *Ketentuan Pembayaran:*\n"
-             . "• Pembayaran Uang Muka (DP) minimal 50% untuk memulai tahap riset, setup server, dan pengerjaan kode.\n"
+             . "• Pembayaran Uang Muka (DP) minimal 50% (atau Lunas 100%) langsung melalui link tagihan resmi untuk memulai tahap pengerjaan.\n"
              . "• Pelunasan 50% diselesaikan setelah pengerjaan selesai direview dan sistem siap diluncurkan online (*LIVE*).\n"
-             . "• Kwitansi resmi lunas bertanda tangan digital akan diterbitkan otomatis setelah dana terverifikasi.\n\n"
-             . "Mohon konfirmasikan bukti transfer dengan mengirimkan struk ke nomor WhatsApp ini ({$phone}). Terima kasih banyak atas kepercayaannya! 🙏✨";
+             . "• Verifikasi pembayaran berlangsung *otomatis real-time* tanpa perlu kirim bukti transfer manual, dan *Kwitansi Resmi Digital* langsung terbit seketika.\n\n"
+             . "Jika membutuhkan bantuan terkait link pembayaran, silakan hubungi WhatsApp kami ({$phone}). Terima kasih banyak atas kepercayaannya! 🙏✨";
     }
 
     /**
@@ -256,9 +265,6 @@ class WhatsAppTemplates
     {
         $cfg = self::resolveSettings($settings);
         $brand = $cfg->brand_name ?: 'VexaHost';
-        $bank = $cfg->bank_name ?: '-';
-        $accNo = $cfg->bank_account_number ?: '-';
-        $accHolder = $cfg->bank_account_holder ?: '-';
         $phone = $cfg->phone_support ?: '0858-0874-9131';
 
         return "Halo Kak [Nama Klien]! ✨\n\n"
@@ -267,12 +273,12 @@ class WhatsAppTemplates
              . "• Total Nilai Proyek: Rp [Total]\n"
              . "• Uang Muka (DP) Diterima: Rp [DP]\n"
              . "• *Sisa Tagihan Pelunasan: Rp [Sisa]*\n\n"
-             . "Sebelum tim kami melakukan peluncuran (*Go-Live*) ke domain utama dan serah terima hak akses penuh sistem, mohon selesaikan pelunasan ke rekening resmi kami:\n\n"
-             . "🏦 *{$bank}*\n"
-             . "💳 *No. Rekening:* {$accNo}\n"
-             . "👤 *Atas Nama:* {$accHolder}\n"
-             . "📱 *QRIS:* Tersedia pada dokumen invoice tagihan pelunasan terlampir\n\n"
-             . "Mohon kirimkan bukti transfer melalui chat WhatsApp ini ({$phone}). Terima kasih banyak atas kerjasamanya bersama {$brand}! 🙏🚀";
+             . "⚡ *Link Pelunasan Instan (Tanpa Perlu Login):*\n"
+             . "👉 [Link Pembayaran Langsung]\n\n"
+             . "✨ *Metode Otomatis (Instan 24 Jam):*\n"
+             . "• QRIS Semua Bank & E-Wallet (BCA, Livin, GoPay, OVO, Dana)\n"
+             . "• Virtual Account Bank Mandiri & BNI\n\n"
+             . "Setelah pelunasan berhasil, tim kami akan langsung meluncurkan sistem ke domain utama dan menerbitkan Kwitansi Resmi otomatis. Terima kasih atas kerjasamanya bersama {$brand}! 🙏🚀";
     }
 
     /**
@@ -282,9 +288,6 @@ class WhatsAppTemplates
     {
         $cfg = self::resolveSettings($settings);
         $brand = $cfg->brand_name ?: 'VexaHost';
-        $bank = $cfg->bank_name ?: '-';
-        $accNo = $cfg->bank_account_number ?: '-';
-        $accHolder = $cfg->bank_account_holder ?: '-';
         $phone = $cfg->phone_support ?: '0858-0874-9131';
 
         return "Halo Kak! Agar performa website tetap optimal, cepat, dan data bisnis selalu terlindungi, kami dari *{$brand}* menyediakan layanan pendampingan berkala:\n\n"
@@ -293,9 +296,8 @@ class WhatsAppTemplates
              . "✅ Pemantauan Uptime Server 24/7 & Proteksi Keamanan (Anti-Malware & SSL Guard)\n"
              . "✅ Bantuan Update Teks, Foto Produk, Banner Promo & Penyesuaian Konten Tanpa Ribet Coding\n"
              . "✅ Konsultasi Teknis & Jalur Bantuan Prioritas via WhatsApp\n\n"
-             . "💳 *Rekening Pembayaran Langganan:*\n"
-             . "🏦 {$bank}\n"
-             . "💳 No. Rekening: {$accNo} (a.n {$accHolder})\n\n"
+             . "⚡ *Kemudahan Pembayaran:*\n"
+             . "Setiap jatuh tempo bulanan, sistem akan mengirimkan link pembayaran otomatis (mendukung QRIS Semua Bank & Virtual Account Mandiri/BNI) beserta Kwitansi Resmi otomatis.\n\n"
              . "Dengan layanan pendampingan ini, Kakak bisa fokus penuh menjalankan omzet bisnis tanpa khawatir kendala teknis website. Cukup konfirmasi ke WhatsApp kami ({$phone}) jika ingin diaktifkan ya Kak. Terima kasih! 🙏✨";
     }
 
@@ -335,9 +337,14 @@ class WhatsAppTemplates
         $sisaHari = $subscription->sisa_hari;
         $expiredDate = $subscription->tanggal_expired->translatedFormat('d F Y');
         $harga = number_format($subscription->harga, 0, ',', '.');
-        $infoBank = $cfg->bank_info_string ?: "{$cfg->bank_name} {$cfg->bank_account_number} a.n {$cfg->bank_account_holder}";
         $brand = $cfg->brand_name ?: 'VexaHost';
         $phone = $cfg->phone_support ?: '0858-0874-9131';
+
+        $invoice = $project?->latestInvoice ?: $project?->invoices()->first();
+        $directPayUrl = ($invoice && $invoice->payment_token) ? route('invoices.pay', $invoice->payment_token) : null;
+        $paySection = $directPayUrl
+            ? "⚡ *Link Pembayaran Online (QRIS / Virtual Account Mandiri & BNI):*\n👉 {$directPayUrl}\n\n"
+            : "✨ *Metode Pembayaran:* Tersedia pembayaran otomatis via QRIS Semua Bank & Virtual Account Mandiri/BNI.\n\n";
 
         $urgency = match (true) {
             $sisaHari <= 1 => "⚠️ *BESOK* masa berlaku akan berakhir!",
@@ -351,8 +358,7 @@ class WhatsAppTemplates
              . "📆 Tanggal Expired: *{$expiredDate}*\n\n"
              . "Agar layanan website/sistem Anda tetap aktif tanpa gangguan, silakan lakukan perpanjangan sebelum tanggal tersebut.\n\n"
              . "💰 *Biaya Perpanjangan: Rp {$harga}*\n"
-             . "🏦 Transfer ke: {$infoBank}\n\n"
-             . "Setelah transfer, mohon konfirmasi bukti pembayaran ke nomor ini ya Kak.\n\n"
+             . $paySection
              . "Jika ada pertanyaan atau ingin konsultasi paket perpanjangan, silakan hubungi tim {$brand} di {$phone}. Terima kasih! 🙏✨";
     }
 
@@ -366,16 +372,21 @@ class WhatsAppTemplates
         $project = $subscription->project;
         $expiredDate = $subscription->tanggal_expired->translatedFormat('d F Y');
         $harga = number_format($subscription->harga, 0, ',', '.');
-        $infoBank = $cfg->bank_info_string ?: "{$cfg->bank_name} {$cfg->bank_account_number} a.n {$cfg->bank_account_holder}";
         $brand = $cfg->brand_name ?: 'VexaHost';
         $phone = $cfg->phone_support ?: '0858-0874-9131';
+
+        $invoice = $project?->latestInvoice ?: $project?->invoices()->first();
+        $directPayUrl = ($invoice && $invoice->payment_token) ? route('invoices.pay', $invoice->payment_token) : null;
+        $paySection = $directPayUrl
+            ? "⚡ *Link Pembayaran Online (QRIS / Virtual Account Mandiri & BNI):*\n👉 {$directPayUrl}\n\n"
+            : "✨ *Metode Pembayaran:* Tersedia pembayaran otomatis via QRIS Semua Bank & Virtual Account Mandiri/BNI.\n\n";
 
         return "Halo Kak {$nama},\n\n"
              . "Pemberitahuan bahwa masa berlaku layanan *{$project->nama_project}* ({$subscription->tipe_label}) telah *berakhir* pada tanggal *{$expiredDate}*.\n\n"
              . "⚠️ Layanan hosting, domain, dan dukungan teknis untuk sistem Anda saat ini *tidak aktif*. Website/aplikasi mungkin tidak dapat diakses oleh pelanggan Anda.\n\n"
              . "Untuk mengaktifkan kembali layanan, silakan lakukan pembayaran perpanjangan:\n"
              . "💰 *Biaya Perpanjangan: Rp {$harga}*\n"
-             . "🏦 Transfer ke: {$infoBank}\n\n"
+             . $paySection
              . "Segera hubungi tim {$brand} di {$phone} untuk proses reaktivasi.\n\n"
              . "Terima kasih atas kerjasamanya! 🙏";
     }

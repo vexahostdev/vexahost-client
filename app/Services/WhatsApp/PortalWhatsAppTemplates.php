@@ -14,15 +14,21 @@ class PortalWhatsAppTemplates
         string $projectName,
         string $email,
         string $rawPassword,
-        ?string $portalUrl = null
+        ?string $portalUrl = null,
+        ?string $directPayUrl = null
     ): string {
         $url = $portalUrl ?: config('app.url', 'https://client.vexahostcloud.my.id');
+        $paySection = $directPayUrl 
+            ? "⚡ *Link Pembayaran Tagihan (Tanpa Login):*\n👉 {$directPayUrl}\n(Tersedia QRIS instan semua bank & Virtual Account Mandiri / BNI)\n\n"
+            : "";
 
         return "Halo Kak *{$name}*, selamat datang di Client Panel VexaHost! ✨\n\n"
-            . "Proyek Anda *{$projectName}* telah berhasil didaftarkan ke sistem kerja kami. Sekarang Kakak bisa memantau progres tugas, jadwal pengerjaan, dan mengajukan tiket revisi/bantuan langsung melalui portal:\n\n"
-            . "🌐 *Link Login:* {$url}\n"
-            . "📧 *Email Login:* {$email}\n"
-            . "🔑 *Password Sementara:* `{$rawPassword}`\n\n"
+            . "Proyek Anda *{$projectName}* telah berhasil didaftarkan ke sistem kerja kami. Sekarang Kakak bisa memantau progres tugas, jadwal pengerjaan, dan tagihan secara langsung:\n\n"
+            . $paySection
+            . "🌐 *Akses Portal Klien:*\n"
+            . "• URL: {$url}\n"
+            . "• Email Login: {$email}\n"
+            . "• Password Sementara: `{$rawPassword}`\n\n"
             . "💡 *Saran:* Silakan login dan ganti password Anda di menu profil demi keamanan akun. Terima kasih atas kepercayaannya bersama VexaHost! 🚀";
     }
 
@@ -32,12 +38,17 @@ class PortalWhatsAppTemplates
     public static function existingClientNewProject(
         string $name,
         string $projectName,
-        ?string $portalUrl = null
+        ?string $portalUrl = null,
+        ?string $directPayUrl = null
     ): string {
         $url = $portalUrl ?: config('app.url', 'https://client.vexahostcloud.my.id');
+        $paySection = $directPayUrl 
+            ? "⚡ *Link Pembayaran Tagihan (Tanpa Login):*\n👉 {$directPayUrl}\n(Tersedia QRIS instan semua bank & Virtual Account Mandiri / BNI)\n\n"
+            : "";
 
         return "Halo Kak *{$name}*! ✨\n\n"
             . "Proyek baru Anda *{$projectName}* sudah aktif dan ditambahkan ke akun Client Panel Anda.\n\n"
+            . $paySection
             . "Silakan login untuk memantau progres dan roadmap pengerjaannya:\n"
             . "👉 {$url}/projects\n\n"
             . "Terima kasih banyak atas kerjasamanya! 🙏🚀";

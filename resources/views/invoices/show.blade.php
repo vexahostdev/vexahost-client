@@ -29,6 +29,13 @@
                     <span>Unduh PDF Tagihan</span>
                 </a>
 
+                @if($invoice->payment_token)
+                    <a href="{{ route('invoices.pay', $invoice->payment_token) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-500 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-all shadow-2xs hover:shadow-xs" title="Buka Halaman Pembayaran Langsung (Guest Checkout Tanpa Login)">
+                        <span class="material-symbols-outlined text-[18px] text-emerald-600 dark:text-emerald-400">bolt</span>
+                        <span>Link Bayar (Tanpa Login)</span>
+                    </a>
+                @endif
+
                 @if($invoice->status === 'paid' || $invoice->status === 'partially_paid' || $invoice->paid_amount > 0)
                     <a href="{{ route('invoices.receipt', $invoice) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 hover:border-blue-500 text-blue-700 dark:text-blue-300 text-xs font-bold transition-all shadow-2xs hover:shadow-xs">
                         <span class="material-symbols-outlined text-[18px] text-blue-600">receipt_long</span>
@@ -39,10 +46,12 @@
                 @if($isAdmin)
                     @php
                         $clientCleanPhone = !empty($invoice->client?->phone) ? preg_replace('/[^0-9]/', '', $invoice->client->phone) : '';
-                        $waMsgToClient = rawurlencode("Halo Kak " . ($invoice->client?->name ?? 'Klien') . ",\n\nKami dari Tim Finance PT DESTINARA CHAKRAWALA ARTHA ingin mengonfirmasi perihal tagihan proyek *" . ($invoice->project?->name ?? 'Proyek') . "* (No. Invoice: {$invoice->invoice_number}).\n\nStatus saat ini: *" . $badge['label'] . "*\nSisa Tagihan: *Rp " . number_format($invoice->balance_due, 0, ',', '.') . "*.\n\nApakah ada yang bisa kami bantu? Terima kasih!");
+                        $directUrl = $invoice->payment_token ? route('invoices.pay', $invoice->payment_token) : null;
+                        $directPayText = $directUrl ? "\n\n⚡ Link Bayar Langsung (Tanpa Login):\n👉 " . $directUrl : "";
+                        $waMsgToClient = rawurlencode("Halo Kak " . ($invoice->client?->name ?? 'Klien') . ",\n\nKami dari Tim Finance PT DESTINARA CHAKRAWALA ARTHA ingin mengonfirmasi perihal tagihan proyek *" . ($invoice->project?->name ?? 'Proyek') . "* (No. Invoice: {$invoice->invoice_number}).\n\nStatus saat ini: *" . $badge['label'] . "*\nSisa Tagihan: *Rp " . number_format($invoice->balance_due, 0, ',', '.') . "*{$directPayText}\n\nApakah ada yang bisa kami bantu? Terima kasih!");
                     @endphp
                     @if($clientCleanPhone)
-                        <a href="https://wa.me/{{ $clientCleanPhone }}?text={{ $waMsgToClient }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs">
+                        <a href="https://wa.me/{{ $clientCleanPhone }}?text={{ $waMsgToClient }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#BAFF39] hover:bg-[#a6ec27] text-zinc-950 text-xs font-black transition-all shadow-xs">
                             <span class="material-symbols-outlined text-[18px]">chat</span>
                             <span>Chat WA Klien</span>
                         </a>
@@ -52,7 +61,7 @@
                         $waPhone = !empty($settings->phone_support) ? preg_replace('/[^0-9]/', '', $settings->phone_support) : '6285808749131';
                         $waShareText = rawurlencode("Halo Tim Finance {$settings->company_name},\n\nSaya ingin mengonfirmasi pembayaran untuk tagihan:\n- No. Invoice: {$invoice->invoice_number}\n- Proyek: {$invoice->project?->name}\n- Total Nilai: Rp " . number_format($invoice->amount, 0, ',', '.') . "\n- Sisa Tagihan: Rp " . number_format($invoice->balance_due, 0, ',', '.') . "\n\nTerlampir bukti transfer saya. Mohon dicek. Terima kasih!");
                     @endphp
-                    <a href="https://wa.me/{{ $waPhone }}?text={{ $waShareText }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs">
+                    <a href="https://wa.me/{{ $waPhone }}?text={{ $waShareText }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#BAFF39] hover:bg-[#a6ec27] text-zinc-950 text-xs font-black transition-all shadow-xs">
                         <span class="material-symbols-outlined text-[18px]">chat</span>
                         <span>Konfirmasi via WhatsApp</span>
                     </a>
@@ -71,7 +80,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <a href="https://client.vexahostcloud.my.id/admin/projects" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition-all border border-zinc-700">
+                    <a href="{{ route('admin.projects.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition-all border border-zinc-700">
                         <span class="material-symbols-outlined text-[15px]">open_in_new</span>
                         <span>Buka CRM Proyek</span>
                     </a>
@@ -110,17 +119,22 @@
                     
                     <!-- Top Invoice Meta -->
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between pb-6 border-b border-zinc-200/60 dark:border-zinc-800 gap-4">
-                        <div class="space-y-1">
-                            <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold">Penerbit Dokumen</span>
-                            <div class="flex items-center gap-2">
-                                <span class="font-black text-zinc-900 dark:text-white text-base tracking-tight">
-                                    {{ $settings->company_name ?? 'PT DESTINARA CHAKRAWALA ARTHA' }}
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-3">
+                                <x-vh-logo size="md" />
+                                <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 dark:bg-zinc-800 text-emerald-800 dark:text-[#BAFF39] font-bold">
+                                    Dokumen Resmi
                                 </span>
                             </div>
-                            <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm">
-                                Layanan Pembuatan Website, Sistem POS &amp; Aplikasi Digital<br>
-                                WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }} &bull; Email: {{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }}
-                            </p>
+                            <div class="pt-1">
+                                <div class="font-extrabold text-zinc-900 dark:text-white text-sm sm:text-base tracking-tight">
+                                    {{ $settings->company_name ?? 'PT DESTINARA CHAKRAWALA ARTHA' }}
+                                </div>
+                                <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mt-0.5">
+                                    Layanan Pembuatan Website, Sistem POS &amp; Aplikasi Digital<br>
+                                    WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }} &bull; Email: {{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }}
+                                </p>
+                            </div>
                         </div>
                         <div class="sm:text-right space-y-1">
                             <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold">Tanggal Terbit</span>
@@ -246,61 +260,6 @@
                             </div>
                         </div>
                     </div>
-                @else
-                    <!-- Client View: Payment Instructions: Bank & QRIS -->
-                    <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs p-5 sm:p-6">
-                        <h3 class="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4">
-                            <span class="material-symbols-outlined text-emerald-600">account_balance</span>
-                            <span>Metode Pembayaran Resmi</span>
-                        </h3>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
-                            <!-- Rekening Bank BCA -->
-                            <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/50 space-y-2">
-                                <div class="text-[11px] font-mono font-bold text-zinc-400 uppercase tracking-wider">Transfer Bank Resmi</div>
-                                <div class="text-sm font-black text-zinc-900 dark:text-white">{{ $settings->bank_name ?? '-' }}</div>
-                                <div class="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-700">
-                                    <span class="font-mono font-black text-base text-zinc-900 dark:text-white tracking-wider" id="bca-account">
-                                        {{ $settings->bank_account_number ?? '-' }}
-                                    </span>
-                                    <button type="button" onclick="navigator.clipboard.writeText('{{ $settings->bank_account_number ?? '-' }}'); VhSwal.success('Nomor Rekening {{ $settings->bank_name ?? 'BCA' }} berhasil disalin!');" class="p-1 text-zinc-400 hover:text-emerald-600 transition-colors" title="Salin Nomor Rekening">
-                                        <span class="material-symbols-outlined text-[18px]">content_copy</span>
-                                    </button>
-                                </div>
-                                <div class="text-xs text-zinc-600 dark:text-zinc-300">
-                                    Atas Nama: <strong>{{ $settings->bank_account_holder ?? '-' }}</strong>
-                                </div>
-                            </div>
-
-                            <!-- Barcode QRIS Resmi -->
-                            <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-800/50 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                <a href="{{ $settings->qris_url }}" target="_blank" class="shrink-0 p-1.5 bg-white rounded-xl border border-zinc-300 shadow-xs hover:shadow-md transition-shadow group relative block cursor-zoom-in" title="Klik untuk memperbesar atau unduh Barcode QRIS">
-                                    <img src="{{ $settings->qris_url }}" 
-                                         alt="QRIS Resmi VexaHost" 
-                                         class="w-24 h-24 object-contain rounded-lg"
-                                         onerror="this.onerror=null; this.src='/images/qris.jpg';">
-                                    <div class="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 rounded-xl flex items-center justify-center transition-opacity">
-                                        <span class="material-symbols-outlined text-zinc-900 bg-white/90 rounded-full p-1 text-[16px] shadow">zoom_in</span>
-                                    </div>
-                                </a>
-                                <div class="space-y-1">
-                                    <div class="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Scan QRIS Resmi</div>
-                                    <div class="text-xs font-bold text-zinc-900 dark:text-white leading-snug">
-                                        Mendukung Seluruh E-Wallet &amp; M-Banking
-                                    </div>
-                                    <p class="text-[11px] text-zinc-500 leading-tight">
-                                        BCA Mobile, Livin Mandiri, GoPay, OVO, ShopeePay, Dana, dll.
-                                    </p>
-                                    <div class="pt-1">
-                                        <a href="{{ $settings->qris_url }}" target="_blank" download="QRIS-VexaHost-Digital-Creative.jpg" class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline">
-                                            <span class="material-symbols-outlined text-[14px]">download</span>
-                                            <span>Unduh Barcode QRIS</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 @endif
 
             </div>
@@ -342,6 +301,32 @@
                                 </div>
                             @endif
                         </div>
+
+                        <!-- Link Pembayaran Langsung (Tanpa Perlu Login) -->
+                        @if($invoice->payment_token)
+                            @php
+                                $directPayUrl = route('invoices.pay', $invoice->payment_token);
+                            @endphp
+                            <div class="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/30 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[15px]">bolt</span>
+                                        Link Bayar Klien (Tanpa Login)
+                                    </span>
+                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200">1-Klik</span>
+                                </div>
+                                <div class="text-[11px] text-zinc-600 dark:text-zinc-400">
+                                    Kirim link ini ke chat WA klien agar langsung masuk ke halaman bayar &amp; QRIS/VA otomatis tanpa perlu login akun.
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <input type="text" readonly value="{{ $directPayUrl }}" id="directPayAdminInput" class="w-full text-xs font-mono bg-white dark:bg-zinc-900 border border-emerald-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-zinc-800 dark:text-zinc-200 focus:outline-none select-all">
+                                    <button type="button" onclick="navigator.clipboard.writeText('{{ $directPayUrl }}'); Swal.fire({toast:true,position:'top-end',icon:'success',title:'Link pembayaran disalin!',showConfirmButton:false,timer:2000})" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shrink-0 flex items-center gap-1 cursor-pointer">
+                                        <span class="material-symbols-outlined text-[14px]">content_copy</span>
+                                        <span>Salin</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
 
                         <!-- Status Tagihan Saat Ini -->
                         @if($invoice->status === 'paid')
@@ -578,7 +563,7 @@
                                     </div>
                                 </div>
                                 <div class="pt-2 border-t border-emerald-200/80 dark:border-emerald-800/60">
-                                    <a href="{{ route('invoices.receipt', $invoice) }}" target="_blank" class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm inline-flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98]">
+                                    <a href="{{ route('invoices.receipt', $invoice) }}" target="_blank" class="w-full py-3 px-4 rounded-xl bg-[#BAFF39] hover:bg-[#a6ec27] text-zinc-950 font-black text-sm inline-flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98]">
                                         <span class="material-symbols-outlined text-[22px]">receipt_long</span>
                                         <span>Lihat &amp; Cetak Kwitansi Resmi Pelunasan</span>
                                     </a>
@@ -642,84 +627,117 @@
                             </div>
                         @endif
 
-                        <!-- Upload Form for Client (If not paid) -->
+                        <!-- Payment Section for Client (If not paid) -->
                         @if($invoice->status !== 'paid')
-                            <div class="pt-2 border-t border-zinc-200/80 dark:border-zinc-800 space-y-3">
-                                @if($invoice->status === 'partially_paid')
-                                    <!-- Jika DP sudah sah, form khusus pelunasan sisa -->
-                                    <div class="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                                        {{ $invoice->payment_proof ? 'Unggah Bukti Pelunasan Baru (Re-upload):' : 'Unggah Bukti Pelunasan Sisa Tagihan (Rp ' . number_format($invoice->balance_due, 0, ',', '.') . '):' }}
-                                    </div>
-                                    <form action="{{ route('invoices.upload-proof', $invoice->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
-                                        @csrf
-                                        <input type="hidden" name="payment_type" value="full">
-                                        <input type="hidden" name="payment_amount_transferred" value="{{ $invoice->balance_due }}">
-                                        <div>
-                                            <label class="block text-[11px] text-zinc-500 mb-1">Pilih File Bukti Pelunasan (JPG, PNG, PDF maks 5MB)</label>
-                                            <input type="file" name="payment_proof" required accept=".jpg,.jpeg,.png,.pdf" class="block w-full text-xs text-zinc-700 dark:text-zinc-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-zinc-100 dark:file:bg-zinc-800 file:text-zinc-700 dark:file:text-zinc-300 hover:file:bg-zinc-200 cursor-pointer">
+                            @php
+                                $dpVal = round($invoice->amount / 2);
+                                $fullVal = $invoice->status === 'partially_paid' ? $invoice->balance_due : $invoice->amount;
+                            @endphp
+
+                            <div x-data="{ 
+                                payType: '{{ $invoice->status === 'partially_paid' ? 'full' : 'dp' }}',
+                                channel: 'online_payment',
+                                dpAmount: {{ $dpVal }},
+                                fullAmount: {{ $fullVal }},
+                                get currentAmount() {
+                                    return this.payType === 'dp' ? this.dpAmount : this.fullAmount;
+                                }
+                            }" class="pt-2 border-t border-zinc-200/80 dark:border-zinc-800 space-y-4">
+
+                                @if($invoice->payment_url)
+                                    <!-- Banner Active Payment Link -->
+                                    <div class="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                                                <span class="material-symbols-outlined text-[18px] text-emerald-600 dark:text-[#BAFF39]">bolt</span>
+                                                Sesi Pembayaran Aktif
+                                            </span>
+                                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#BAFF39]/30 dark:bg-[#BAFF39]/20 text-zinc-900 dark:text-[#BAFF39] font-bold uppercase">
+                                                {{ $invoice->payment_reference }}
+                                            </span>
                                         </div>
-                                        <div>
-                                            <label class="block text-[11px] text-zinc-500 mb-1">Catatan / Nama Pemilik Rekening Pengirim</label>
-                                            <input type="text" name="payment_notes" placeholder="Contoh: Pelunasan Sisa via BCA an Bpk. Budi" class="w-full text-xs rounded-lg border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 py-1.5 px-3 focus:ring-emerald-500 focus:border-emerald-500">
-                                        </div>
-                                        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs">
-                                            <span class="material-symbols-outlined text-[18px]">upload</span>
-                                            <span>Kirim Bukti Pelunasan (Rp {{ number_format($invoice->balance_due, 0, ',', '.') }})</span>
-                                        </button>
-                                    </form>
-                                @else
-                                    <!-- Jika belum bayar sama sekali, klien cukup pilih apakah transfer DP atau Pelunasan Penuh -->
-                                    <div x-data="{ clientPayType: '{{ $invoice->payment_type ?: 'dp' }}' }" class="space-y-3">
-                                        <div>
-                                            <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                                                Pilih Jenis Pembayaran yang Anda Lakukan:
-                                            </label>
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <button type="button" @click="clientPayType = 'dp'" 
-                                                        :class="clientPayType === 'dp' ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-bold ring-2 ring-blue-500/20' : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'" 
-                                                        class="border rounded-xl py-2 px-3 text-center transition-all cursor-pointer">
-                                                    <div class="text-xs">Uang Muka (DP)</div>
-                                                    <div class="text-[10px] text-zinc-400 font-normal mt-0.5">Mulai pengerjaan proyek</div>
-                                                </button>
-                                                <button type="button" @click="clientPayType = 'full'" 
-                                                        :class="clientPayType === 'full' ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold ring-2 ring-emerald-500/20' : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'" 
-                                                        class="border rounded-xl py-2 px-3 text-center transition-all cursor-pointer">
-                                                    <div class="text-xs">Pelunasan Penuh</div>
-                                                    <div class="text-[10px] text-zinc-400 font-normal mt-0.5">Lunas 100% langsung</div>
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <form action="{{ route('invoices.upload-proof', $invoice->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
-                                            @csrf
-                                            <input type="hidden" name="payment_type" :value="clientPayType">
-
-                                            <div>
-                                                <label class="block text-[11px] text-zinc-500 mb-1 font-medium">Unggah Bukti Transfer / Struk QRIS (JPG, PNG, PDF maks 5MB)</label>
-                                                <input type="file" name="payment_proof" required accept=".jpg,.jpeg,.png,.pdf" class="block w-full text-xs text-zinc-700 dark:text-zinc-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-zinc-100 dark:file:bg-zinc-800 file:text-zinc-700 dark:file:text-zinc-300 hover:file:bg-zinc-200 cursor-pointer">
-                                            </div>
-
-                                            <div>
-                                                <label class="block text-[11px] text-zinc-500 mb-1 font-medium">Catatan / Nama Pemilik Rekening Pengirim <span class="text-zinc-400 font-normal">(Opsional)</span></label>
-                                                <input type="text" name="payment_notes" placeholder="Contoh: Transfer via BCA an Bpk. Budi" class="w-full text-xs rounded-lg border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 py-2 px-3 focus:ring-emerald-500 focus:border-emerald-500">
-                                            </div>
-
-                                            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-xs font-bold transition-all shadow-xs cursor-pointer" :class="clientPayType === 'dp' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'">
-                                                <span class="material-symbols-outlined text-[18px]">upload</span>
-                                                <span x-text="clientPayType === 'dp' ? 'Kirim Bukti Pembayaran DP' : 'Kirim Bukti Pelunasan Penuh'"></span>
-                                            </button>
-                                        </form>
+                                        <p class="text-[11px] text-zinc-600 dark:text-zinc-400">
+                                            Anda memiliki tagihan pembayaran online aktif. Silakan selesaikan pembayaran melalui tautan pembayaran resmi di bawah ini:
+                                        </p>
+                                        <a href="{{ $invoice->payment_url }}" target="_blank" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 dark:bg-zinc-800 hover:bg-black border border-zinc-700 text-[#BAFF39] text-xs font-bold transition-all shadow-xs cursor-pointer">
+                                            <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+                                            <span>Lanjutkan Pembayaran Sekarang</span>
+                                        </a>
                                     </div>
                                 @endif
+
+                                <!-- Form Bayar Otomatis Online -->
+                                <form action="{{ route('invoices.pay-xendit', $invoice->id) }}" method="POST" class="space-y-4">
+                                    @csrf
+                                    <input type="hidden" name="payment_type" :value="payType">
+                                    <input type="hidden" name="channel" value="online_payment">
+
+                                    <!-- 1. Pilihan Jenis Pembayaran (DP vs Pelunasan) -->
+                                    @if($invoice->status !== 'partially_paid')
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                                1. Pilih Nominal Pembayaran:
+                                            </label>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <button type="button" @click="payType = 'dp'" 
+                                                        :class="payType === 'dp' ? 'border-emerald-600 dark:border-[#BAFF39] bg-emerald-50/70 dark:bg-emerald-950/30 font-bold ring-2 ring-emerald-500/20 dark:ring-[#BAFF39]/20' : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'" 
+                                                        class="border rounded-xl p-2.5 text-left transition-all cursor-pointer">
+                                                    <div class="flex items-center justify-between">
+                                                        <span class="text-xs text-zinc-900 dark:text-white">DP (50%)</span>
+                                                        <span class="material-symbols-outlined text-[16px] text-emerald-600 dark:text-[#BAFF39]" x-show="payType === 'dp'">check_circle</span>
+                                                    </div>
+                                                    <div class="text-xs font-bold mt-1 text-zinc-900 dark:text-white">
+                                                        Rp {{ number_format($dpVal, 0, ',', '.') }}
+                                                    </div>
+                                                    <div class="text-[10px] text-zinc-400 font-normal mt-0.5">Mulai pengerjaan</div>
+                                                </button>
+
+                                                <button type="button" @click="payType = 'full'" 
+                                                        :class="payType === 'full' ? 'border-emerald-600 dark:border-[#BAFF39] bg-emerald-50/70 dark:bg-emerald-950/30 font-bold ring-2 ring-emerald-500/20 dark:ring-[#BAFF39]/20' : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'" 
+                                                        class="border rounded-xl p-2.5 text-left transition-all cursor-pointer">
+                                                    <div class="flex items-center justify-between">
+                                                        <span class="text-xs text-zinc-900 dark:text-white">Lunas (100%)</span>
+                                                        <span class="material-symbols-outlined text-[16px] text-emerald-600 dark:text-[#BAFF39]" x-show="payType === 'full'">check_circle</span>
+                                                    </div>
+                                                    <div class="text-xs font-bold mt-1 text-zinc-900 dark:text-white">
+                                                        Rp {{ number_format($invoice->amount, 0, ',', '.') }}
+                                                    </div>
+                                                    <div class="text-[10px] text-zinc-400 font-normal mt-0.5">Bayar penuh langsung</div>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+                                            <div>
+                                                <div class="text-[11px] text-zinc-500 dark:text-zinc-400">Jenis Pembayaran:</div>
+                                                <div class="text-xs font-bold text-zinc-900 dark:text-white">Pelunasan Sisa Tagihan Proyek</div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-[11px] text-zinc-500 dark:text-zinc-400">Total Pelunasan:</div>
+                                                <div class="text-sm font-bold text-rose-600 dark:text-rose-400">Rp {{ number_format($invoice->balance_due, 0, ',', '.') }}</div>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    <!-- Submit Button -->
+                                    <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-[#BAFF39] hover:bg-[#a6ec27] text-zinc-950 text-xs font-black transition-all shadow-md active:scale-[0.99] cursor-pointer">
+                                        <span class="material-symbols-outlined text-[18px]">lock</span>
+                                        <span>Bayar Sekarang &mdash; Rp <span x-text="Number(currentAmount).toLocaleString('id-ID')"></span></span>
+                                    </button>
+                                    <p class="text-[11px] text-center text-zinc-400 flex items-center justify-center gap-1">
+                                        <span class="material-symbols-outlined text-[14px] text-emerald-600">verified_user</span>
+                                        <span>Transaksi aman, instan &amp; langsung terverifikasi oleh sistem</span>
+                                    </p>
+                                </form>
                             </div>
                         @endif
 
                         <!-- Quick WhatsApp Link -->
                         <div class="pt-3 border-t border-zinc-200/80 dark:border-zinc-800 text-center">
-                            <p class="text-[11px] text-zinc-400 mb-2">Ingin konfirmasi langsung tanpa upload form?</p>
+                            <p class="text-[11px] text-zinc-400 mb-2">Butuh bantuan proses pembayaran?</p>
                             <a href="https://wa.me/{{ $waPhone }}?text={{ $waShareText }}" target="_blank" class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-bold transition-all">
                                 <span class="material-symbols-outlined text-[18px] text-emerald-600">send</span>
-                                <span>Kirim Bukti via WhatsApp</span>
+                                <span>Hubungi Admin via WhatsApp</span>
                             </a>
                         </div>
                     </div>

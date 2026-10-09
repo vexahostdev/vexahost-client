@@ -236,10 +236,16 @@
                                         </a>
                                     @endif
                                 </div>
-                                <div class="flex items-center gap-3">
+                                <div class="flex flex-wrap items-center gap-2">
                                     <span class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
                                         {{ $project->status_label }}
                                     </span>
+                                    @if($project->latestInvoice && $project->latestInvoice->payment_token)
+                                        <a href="{{ route('invoices.pay', $project->latestInvoice->payment_token) }}" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 inline-flex items-center gap-1 shadow-xs">
+                                            <span class="material-symbols-outlined text-[14px]">payments</span>
+                                            <span>Halaman Bayar Xendit</span>
+                                        </a>
+                                    @endif
                                     <a href="{{ route('admin.projects.show', $project) }}" class="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100">
                                         Kelola Proyek
                                     </a>
@@ -298,7 +304,7 @@
                                    class="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1">Nama Kontak / Owner</label>
                                 <input type="text" name="nama_kontak" value="{{ old('nama_kontak', $lead->nama_kontak) }}"
@@ -307,6 +313,11 @@
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1">Nomor WhatsApp</label>
                                 <input type="text" name="kontak_wa" value="{{ old('kontak_wa', $lead->kontak_wa) }}" required
+                                       class="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1">Email Klien (Opsional)</label>
+                                <input type="email" name="email" value="{{ old('email', $lead->email) }}" placeholder="klien@bisnis.com"
                                        class="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
                             </div>
                         </div>
@@ -413,6 +424,14 @@
                             </p>
                         @endif
                     </div>
+
+                    <input type="hidden" name="sync_portal" value="0">
+                    <label class="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50 cursor-pointer">
+                        <input type="checkbox" name="sync_portal" value="1" checked class="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500">
+                        <span class="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                            <strong>Kirim WhatsApp Otomatis Sekarang:</strong> Buat akun Client Panel &amp; kirim pesan WA berisi akses login + <strong>Link Pembayaran Langsung Xendit</strong> (QRIS / VA Mandiri &amp; BNI).
+                        </span>
+                    </label>
 
                     <p class="text-[11px] text-zinc-500">
                         Status lead akan diubah menjadi <b>Deal</b> dan project baru akan dibuat dalam status <b>Draft</b>.

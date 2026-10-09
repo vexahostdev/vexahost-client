@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
         // Cegah Chrome warning: "was preloaded using link preload but not used" akibat Cloudflare Early Hints / Rocket Loader
         Vite::usePreloadTagAttributes(fn () => false);
 
-        if (request()->header('x-forwarded-proto') === 'https' || (request()->server('HTTP_X_FORWARDED_PROTO') === 'https') || str_contains(request()->getHost(), 'ngrok')) {
+        if (request()->header('x-forwarded-proto') === 'https' || (request()->server('HTTP_X_FORWARDED_PROTO') === 'https') || request()->isSecure()) {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
     }

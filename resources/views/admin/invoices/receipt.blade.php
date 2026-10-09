@@ -192,43 +192,71 @@
 </head>
 <body>
 
+@php
+    $logoSrc = !empty($logoBase64) ? $logoBase64 : ($settings->logo_base64 ?? asset('images/logo.png'));
+@endphp
+
 @if(!($isPdf ?? false))
     <!-- Action Bar & Notifications (Web View Only) -->
     @if(session('success'))
-        <div class="flash-alert no-print">
-            [✔] {{ session('success') }}
+        <div class="flash-alert no-print" style="background: #ecfdf5; border-color: #059669; color: #065f46;">
+            {{ session('success') }}
         </div>
     @endif
     @if(session('error'))
-        <div class="flash-alert no-print" style="border-color: #000; background: #fff1f2;">
-            [✕] {{ session('error') }}
+        <div class="flash-alert no-print" style="border-color: #dc2626; background: #fef2f2; color: #991b1b;">
+            {{ session('error') }}
         </div>
     @endif
 
     <div class="action-bar no-print">
-        <div>
+        <div style="display: flex; align-items: center; gap: 12px;">
             <a href="{{ route('admin.payments.index') }}" class="action-btn secondary">
                 &larr; Kembali ke Riwayat Pembayaran
             </a>
+            <div style="display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid #e4e4e7;">
+                <img src="{{ asset('images/logo.png') }}" alt="VexaHost" style="height: 26px; width: auto;">
+                <span style="font-size: 13px; font-weight: 800; color: #18181b;">Vexa<span style="color: #059669;">Host</span></span>
+            </div>
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
             @php
                 $cleanReceiptNo = str_replace('/', '-', $receiptNumber);
                 $brandName = $settings->brand_name ?? 'VexaHost';
-                $waShareText = rawurlencode("Halo Kak {$lead?->nama_kontak},\n\nTerima kasih! Pembayaran {$payment->jenis_label} untuk proyek *{$project?->nama_project}* telah kami terima dan diverifikasi.\n\n• Nomor Kwitansi: {$receiptNumber}\n• Jumlah Diterima: Rp " . number_format($payment->jumlah, 0, ',', '.') . "\n• Status: LUNAS & TERVERIFIKASI\n\nSalam hangat,\n{$brandName}");
+                $invoiceObj = $project?->latestInvoice ?: $project?->invoices()->first();
+                if ($invoiceObj && empty($invoiceObj->payment_token)) {
+                    $invoiceObj->payment_token = \Illuminate\Support\Str::random(40);
+                    $invoiceObj->saveQuietly();
+                }
+                $receiptDirectUrl = $invoiceObj?->payment_token ? route('invoices.pay', $invoiceObj->payment_token) : null;
+                $directUrlText = $receiptDirectUrl ? "\n\n📄 *Lihat Kwitansi Digital (Tanpa Login):*\n{$receiptDirectUrl}" : "";
+                $waShareText = rawurlencode("Halo Kak " . ($lead?->nama_kontak ?: $lead?->nama_usaha) . ",\n\nTerima kasih! Pembayaran {$payment->jenis_label} untuk proyek *{$project?->nama_project}* telah kami terima dan diverifikasi sah.\n\n• Nomor Kwitansi: {$receiptNumber}\n• Jumlah Diterima: Rp " . number_format($payment->jumlah, 0, ',', '.') . "\n• Status: LUNAS & TERVERIFIKASI{$directUrlText}\n\nSalam hangat,\n{$brandName}");
                 $waPhone = preg_replace('/[^0-9]/', '', $lead?->kontak_wa ?? '');
             @endphp
             @if($payment->id)
                 <form id="formSendWaReceipt" action="{{ route('admin.invoices.receipt.send-wa', $payment->id) }}" method="POST" style="display: inline; margin: 0;">
                     @csrf
-                    <button type="button" class="action-btn" onclick="Swal.fire({title:'Konfirmasi',text:'Kirim dokumen PDF Kwitansi ini langsung ke nomor WhatsApp {{ $lead?->kontak_wa }} via VexaHost WA Gateway?',icon:'question',showCancelButton:true,confirmButtonText:'Ya, Kirim',cancelButtonText:'Batal',confirmButtonColor:'#C2410C',cancelButtonColor:'#71717a',reverseButtons:true}).then(r=>{if(r.isConfirmed)document.getElementById('formSendWaReceipt').submit()})">
+                    <button type="button" class="action-btn" style="background: #059669; border-color: #059669;" onclick="Swal.fire({title:'Konfirmasi',text:'Kirim dokumen PDF Kwitansi ini langsung ke nomor WhatsApp {{ $lead?->kontak_wa }} via VexaHost WA Gateway?',icon:'question',showCancelButton:true,confirmButtonText:'Ya, Kirim',cancelButtonText:'Batal',confirmButtonColor:'#059669',cancelButtonColor:'#71717a',reverseButtons:true}).then(r=>{if(r.isConfirmed)document.getElementById('formSendWaReceipt').submit()})">
                         Kirim PDF via WhatsApp
                     </button>
                 </form>
+                @if(!empty($lead?->email))
+                    <form id="formSendEmailReceipt" action="{{ route('admin.invoices.receipt.send-email', $payment->id) }}" method="POST" style="display: inline; margin: 0;">
+                        @csrf
+                        <button type="button" class="action-btn" style="background: #0284c7; border-color: #0284c7;" onclick="Swal.fire({title:'Kirim Kwitansi via Email?',text:'Kirim dokumen PDF Kwitansi resmi ke email {{ $lead?->email }}?',icon:'question',showCancelButton:true,confirmButtonText:'Ya, Kirim Email',cancelButtonText:'Batal',confirmButtonColor:'#0284c7',cancelButtonColor:'#71717a',reverseButtons:true}).then(r=>{if(r.isConfirmed)document.getElementById('formSendEmailReceipt').submit()})">
+                            Kirim Email
+                        </button>
+                    </form>
+                @endif
             @endif
             <a href="https://wa.me/{{ $waPhone }}?text={{ $waShareText }}" target="_blank" class="action-btn secondary">
                 Teks WA
             </a>
+            @if($receiptDirectUrl)
+                <a href="{{ $receiptDirectUrl }}" target="_blank" class="action-btn secondary" style="color: #059669; border-color: #6ee7b7; background: #ecfdf5;">
+                    ⚡ Kwitansi Online
+                </a>
+            @endif
             <a href="{{ route('admin.invoices.receipt', ['payment' => $payment->id ?? 1, 'format' => 'pdf']) }}" class="action-btn secondary">
                 Download PDF
             </a>
@@ -251,9 +279,9 @@
             <td style="width: 58%;">
                 <table style="width: 100%;">
                     <tr>
-                        @if(!empty($logoBase64))
+                        @if(!empty($logoSrc))
                             <td style="width: 65px; vertical-align: middle;">
-                                <img src="{{ $logoBase64 }}" alt="Logo" style="height: 55px; width: auto;" />
+                                <img src="{{ $logoSrc }}" alt="VexaHost Logo" style="height: 55px; width: auto;" />
                             </td>
                         @endif
                         <td style="vertical-align: middle; padding-left: 8px;">

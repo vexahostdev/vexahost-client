@@ -72,7 +72,7 @@
                             </span>
                         </div>
                         <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                            Format percakapan resmi 1-klik untuk komunikasi instan. Seluruh data rekening bank ({{ $bankName }} - {{ $bankNo }}), identitas brand, dan kontak mengikuti data resmi dari <strong>Pengaturan Perusahaan</strong>.
+                            Format percakapan resmi 1-klik untuk komunikasi instan. Seluruh identitas brand, kontak resmi, dan metode pembayaran otomatis (Xendit Payment Gateway) telah disesuaikan dengan <strong>Pengaturan Perusahaan</strong>.
                         </p>
                     </div>
                 </div>
@@ -92,8 +92,8 @@
                     <span>Brief Kebutuhan</span>
                 </button>
                 <button @click="activeTab = 'rekening'" :class="activeTab === 'rekening' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'" class="px-3 py-1.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1">
-                    <span>🏦</span>
-                    <span>Rekening &amp; DP</span>
+                    <span>⚡</span>
+                    <span>Metode Bayar &amp; DP</span>
                 </button>
                 <button @click="activeTab = 'dp_diterima'" :class="activeTab === 'dp_diterima' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'" class="px-3 py-1.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1">
                     <span>🚀</span>
@@ -203,39 +203,31 @@ Jika ada pertanyaan atau butuh panduan dalam pengisian, tim kami siap membantu v
                     </div>
                 </div>
 
-                <!-- TAB 3: REKENING & DP (100% SESUAI PENGATURAN PERUSAHAAN) -->
+                <!-- TAB 3: METODE PEMBAYARAN & DP (OTOMATIS XENDIT) -->
                 <div x-show="activeTab === 'rekening'" class="space-y-4" style="display: none;">
                     <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between text-xs">
                         <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
                             <span class="material-symbols-outlined text-[18px]">verified</span>
-                            <span>Rekening Resmi: <strong>{{ $bankName }}</strong> &bull; <strong>{{ $bankNo }}</strong> a.n <strong>{{ $bankHolder }}</strong></span>
+                            <span>Payment Gateway Resmi: <strong>QRIS Semua Bank &amp; Virtual Account Mandiri / BNI</strong> (Verifikasi Otomatis 24 Jam)</span>
                         </div>
-                        @role('admin')
-                        <a href="{{ route('admin.settings.company.edit') }}" class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1">
-                            <span>Ubah di Pengaturan</span>
-                            <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
-                        </a>
-                        @endrole
                     </div>
 
                     <div class="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-line leading-relaxed selection:bg-emerald-500/20">
-Halo Kak, untuk pembayaran pengerjaan proyek di *{{ $brand }}* ({{ $company }}), pembayaran resmi hanya sah apabila ditransfer melalui rekening atau QRIS resmi kami berikut:
+Halo Kak, untuk pembayaran pengerjaan proyek di *{{ $brand }}* ({{ $company }}), seluruh transaksi dilakukan secara resmi dan otomatis melalui *Link Pembayaran Invoice Resmi* kami:
 
-🏦 *Bank Tujuan:* {{ $bankName }}
-💳 *Nomor Rekening:* {{ $bankNo }}
-👤 *Atas Nama:* {{ $bankHolder }}
-
-📱 *Pembayaran QRIS:* Tersedia scan barcode QRIS resmi pada dokumen invoice penagihan resmi.
+✨ *Metode Pembayaran Otomatis (Aktif 24 Jam):*
+• *QRIS Instan:* Mendukung seluruh M-Banking & E-Wallet (BCA, Livin' Mandiri, BRImo, BNI, GoPay, OVO, Dana, ShopeePay)
+• *Virtual Account Bank:* Bank Mandiri & Bank BNI
 
 📌 *Ketentuan Pembayaran:*
-• Pembayaran Uang Muka (DP) minimal 50% untuk memulai tahap riset, setup server, dan pengerjaan kode.
+• Pembayaran Uang Muka (DP) minimal 50% (atau Lunas 100%) langsung melalui link tagihan resmi untuk memulai tahap pengerjaan.
 • Pelunasan 50% diselesaikan setelah pengerjaan selesai direview dan sistem siap diluncurkan online (*LIVE*).
-• Kwitansi resmi lunas bertanda tangan digital akan diterbitkan otomatis setelah dana terverifikasi.
+• Verifikasi pembayaran berlangsung *otomatis real-time* tanpa perlu kirim bukti transfer manual, dan *Kwitansi Resmi Digital* langsung terbit seketika.
 
-Mohon konfirmasikan bukti transfer dengan mengirimkan struk ke nomor WhatsApp ini ({{ $phone1 }}). Terima kasih banyak atas kepercayaannya! 🙏✨
+Jika membutuhkan bantuan terkait link pembayaran, silakan hubungi WhatsApp kami ({{ $phone1 }}). Terima kasih banyak atas kepercayaannya! 🙏✨
                     </div>
                     <div class="flex items-center justify-between pt-1">
-                        <span class="text-[11px] text-zinc-400">Template ini wajib digunakan untuk instruksi transfer DP ke klien.</span>
+                        <span class="text-[11px] text-zinc-400">Template informasi metode pembayaran online resmi ke klien.</span>
                         <button @click="copyToClipboard($el.closest('.space-y-4').querySelector('.font-mono').innerText, 'rekening')"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs">
                             <span class="material-symbols-outlined text-[16px]" x-text="copiedSnippet === 'rekening' ? 'check' : 'content_copy'"></span>
@@ -251,7 +243,7 @@ Mohon konfirmasikan bukti transfer dengan mengirimkan struk ke nomor WhatsApp in
                         <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">{{ $brand }}</span>
                     </div>
                     <div class="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-line leading-relaxed selection:bg-emerald-500/20">
-Halo Kak [Nama Kontak], DP untuk project *[Nama Paket]* ([Nama Project]) sudah kami terima dengan baik di rekening resmi *{{ $bankName }}* a.n *{{ $bankHolder }}*. 🙏
+Halo Kak [Nama Kontak], pembayaran DP untuk project *[Nama Paket]* ([Nama Project]) sudah kami terima dan terverifikasi otomatis oleh sistem. 🙏
 
 Project langsung kami masukkan ke antrean pengerjaan teknis ya. Estimasi selesai pengerjaan sekitar *[7-14 hari kerja]* ke depan.
 
@@ -261,7 +253,7 @@ Nanti setiap progres penting akan kami update berkala. Kakak juga dapat memantau
 Terima kasih banyak atas kepercayaannya bersama *{{ $brand }}*! ✨
                     </div>
                     <div class="flex items-center justify-between pt-1">
-                        <span class="text-[11px] text-zinc-400">Kirim setelah pembayaran DP diverifikasi di menu Pembayaran.</span>
+                        <span class="text-[11px] text-zinc-400">Kirim setelah pembayaran DP terverifikasi di sistem.</span>
                         <button @click="copyToClipboard($el.closest('.space-y-4').querySelector('.font-mono').innerText, 'dp_diterima')"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs">
                             <span class="material-symbols-outlined text-[16px]" x-text="copiedSnippet === 'dp_diterima' ? 'check' : 'content_copy'"></span>
@@ -302,7 +294,7 @@ Tim {{ $brand }} siap menyempurnakan sebelum website resmi diluncurkan (*LIVE*).
                     <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between text-xs">
                         <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
                             <span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
-                            <span>Tujuan Pelunasan: <strong>{{ $bankName }}</strong> &bull; <strong>{{ $bankNo }}</strong> (a.n {{ $bankHolder }})</span>
+                            <span>Metode Pelunasan: <strong>Link Pembayaran Langsung (QRIS &amp; Virtual Account Mandiri / BNI)</strong></span>
                         </div>
                     </div>
                     <div class="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-line leading-relaxed selection:bg-emerald-500/20">
@@ -317,16 +309,14 @@ Pengerjaan proyek *[Nama Project]* saat ini telah berada pada tahap akhir (*Revi
 • Uang Muka (DP) Diterima: Rp [DP Diterima]
 • *Sisa Tagihan Pelunasan: Rp [Sisa Tagihan]*
 
-Sebelum tim kami melakukan peluncuran resmi (*Go-Live*) ke domain utama dan serah terima akses penuh sistem, mohon selesaikan pembayaran pelunasan ke rekening resmi kami:
-🏦 *{{ $bankName }}*
-💳 *No. Rekening:* {{ $bankNo }}
-👤 *Atas Nama:* {{ $bankHolder }}
-📱 *QRIS:* Tersedia pada lembar invoice resmi terlampir
+⚡ *Link Pelunasan Langsung (Tanpa Perlu Login):*
+👉 [Link Pembayaran Langsung /pay/...]
 
-Kakak dapat memeriksa invoice dan mengunggah bukti transfer pelunasan melalui Client Panel:
-🔗 {{ $portalUrl }}
+✨ *Metode Pembayaran Otomatis (Instan 24 Jam):*
+• QRIS Semua Bank & E-Wallet (BCA, Livin, GoPay, OVO, Dana)
+• Virtual Account Bank Mandiri & BNI
 
-Atau cukup balas chat WhatsApp ini ({{ $phone1 }}) dengan menyertakan bukti transfer. Terima kasih banyak atas kerjasamanya bersama *{{ $brand }}*! 🙏🚀
+Setelah pelunasan diselesaikan, sistem akan memverifikasi otomatis dan menerbitkan *Kwitansi Resmi Lunas* seketika, lalu tim kami langsung melakukan peluncuran resmi (*Go-Live*) ke domain utama. Terima kasih banyak atas kerjasamanya bersama *{{ $brand }}*! 🙏🚀
                     </div>
                     <div class="flex items-center justify-between pt-1">
                         <span class="text-[11px] text-zinc-400">Kirim sebelum proses Go-Live domain utama dan penyerahan akun.</span>
@@ -373,7 +363,7 @@ Jika butuh bantuan operasional kapan saja, silakan hubungi tim kami via WhatsApp
                     <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between text-xs">
                         <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
                             <span class="material-symbols-outlined text-[18px]">verified_user</span>
-                            <span>Rekening Tagihan Maintenance: <strong>{{ $bankName }}</strong> &bull; <strong>{{ $bankNo }}</strong></span>
+                            <span>Tagihan Maintenance Otomatis: <strong>Link Pembayaran Online (QRIS &amp; Virtual Account Mandiri / BNI)</strong></span>
                         </div>
                     </div>
                     <div class="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-line leading-relaxed selection:bg-emerald-500/20">
@@ -385,12 +375,14 @@ Halo Kak [Nama Kontak], pengingat santai untuk tagihan layanan pemeliharaan & ma
 ✅ Bantuan Update Teks, Foto Produk, Banner Promo & Penyesuaian Konten
 ✅ Jalur Bantuan Teknis & Dukungan Prioritas via WhatsApp
 
-💳 *Pembayaran dapat ditransfer ke rekening resmi:*
-🏦 *{{ $bankName }}*
-💳 No. Rekening: *{{ $bankNo }}*
-👤 Atas Nama: *{{ $bankHolder }}*
+⚡ *Link Pembayaran Langsung (Tanpa Perlu Login):*
+👉 [Link Pembayaran Langsung /pay/...]
 
-Jika sudah transfer, mohon konfirmasi bukti transfernya ke nomor WhatsApp ini ({{ $phone1 }}) ya. Terima kasih banyak atas kerjasamanya bersama *{{ $brand }}*! 🙏✨
+✨ *Metode Pembayaran Otomatis (24 Jam):*
+• QRIS Semua Bank & E-Wallet (BCA, Livin, GoPay, OVO, Dana)
+• Virtual Account Bank Mandiri & BNI
+
+Kwitansi pelunasan resmi akan terbit otomatis setelah pembayaran berhasil tanpa perlu konfirmasi bukti manual. Terima kasih banyak atas kerjasamanya bersama *{{ $brand }}*! 🙏✨
                     </div>
                     <div class="flex items-center justify-between pt-1">
                         <span class="text-[11px] text-zinc-400">Template pengingat jatuh tempo langganan maintenance bulanan (H-3).</span>

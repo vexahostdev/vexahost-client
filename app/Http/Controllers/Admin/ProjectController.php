@@ -83,6 +83,8 @@ class ProjectController extends Controller
 
         $project = Project::create($validated);
 
+        app(ProjectLifecycleService::class)->syncInvoiceForProject($project->fresh());
+
         ActivityLogger::log('project_created', "Membuat project baru: {$project->nama_project}", 'Project', $project->id);
 
         return redirect()->route('admin.projects.show', $project)->with('success', "Project {$project->nama_project} berhasil dibuat.");
@@ -93,7 +95,8 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
-        $project->load(['lead.messageLogs', 'payments', 'maintenanceSubscription', 'subscriptions']);
+        app(ProjectLifecycleService::class)->syncInvoiceForProject($project);
+        $project->load(['lead.messageLogs', 'payments', 'maintenanceSubscription', 'subscriptions', 'latestInvoice']);
 
         return view('admin.projects.show', compact('project'));
     }
@@ -123,7 +126,7 @@ class ProjectController extends Controller
         ActivityLogger::log('project_updated', "Memperbarui data project {$project->nama_project} (Harga: Rp " . number_format($oldPrice, 0, ',', '.') . " -> Rp " . number_format($project->harga, 0, ',', '.') . ", Sisa: Rp " . number_format($project->remaining_balance, 0, ',', '.') . ")", 'Project', $project->id);
 
         // Harga berubah → invoice klien ikut diperbarui
-        app(ProjectLifecycleService::class)->refreshInvoice($project->fresh());
+        app(ProjectLifecycleService::class)->syncInvoiceForProject($project->fresh());
 
         return back()->with('success', "Data dan nilai kontrak proyek {$project->nama_project} berhasil diperbarui (Sisa Tagihan: Rp " . number_format($project->remaining_balance, 0, ',', '.') . ").");
     }

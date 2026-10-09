@@ -41,6 +41,52 @@ class MaintenanceSubscription extends Model
         return $this->belongsTo(Project::class, 'project_id');
     }
 
+    public function invoices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Invoice::class, 'subscription_id');
+    }
+
+    public function latestInvoice(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Invoice::class, 'subscription_id')->latestOfMany();
+    }
+
+    /**
+     * Dapatkan atau buat tagihan invoice aktif untuk periode maintenance ini.
+     */
+    public function getOrCreateInvoice(): Invoice
+    {
+        $invoiceNumber = 'INV-MNT/' . now()->format('Ym') . '/' . str_pad($this->id, 4, '0', STR_PAD_LEFT);
+        $dueDate = $this->tanggal_jatuh_tempo_berikutnya ?: now()->addDays(7);
+        $clientId = $this->project?->client_id ?? $this->lead?->user_id;
+
+        if (!$clientId) {
+            $clientId = \App\Models\User::role('client')->first()?->id ?? 1;
+        }
+
+        $invoice = Invoice::where('subscription_id', $this->id)
+            ->where('invoice_number', $invoiceNumber)
+            ->first();
+
+        if ($invoice) {
+            return $invoice;
+        }
+
+        return Invoice::create([
+            'project_id'      => $this->project_id,
+            'subscription_id' => $this->id,
+            'client_id'       => $clientId,
+            'invoice_number'  => $invoiceNumber,
+            'title'           => 'Invoice Pemeliharaan & Server - ' . ($this->lead?->nama_usaha ?: ($this->project?->name ?: 'Website')),
+            'amount'          => $this->harga_bulanan,
+            'paid_amount'     => 0,
+            'balance_due'     => $this->harga_bulanan,
+            'status'          => 'unpaid',
+            'due_date'        => $dueDate,
+            'payment_token'   => \Illuminate\Support\Str::random(40),
+        ]);
+    }
+
     /**
      * Check if reminder is due (H-3 before next due date).
      */

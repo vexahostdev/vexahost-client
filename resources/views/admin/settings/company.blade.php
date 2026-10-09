@@ -111,12 +111,25 @@
 
             <!-- Section 2: Rekening Bank & Barcode QRIS Resmi -->
             <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs p-6 space-y-5">
-                <div class="flex items-center gap-2.5 pb-4 border-b border-zinc-100 dark:border-zinc-800">
-                    <span class="material-symbols-outlined text-emerald-600">payments</span>
-                    <div>
-                        <h2 class="text-sm font-bold text-zinc-900 dark:text-white">Rekening Bank &amp; Barcode QRIS Pembayaran</h2>
-                        <p class="text-[11px] text-zinc-500">Data rekening tujuan transfer klien dan barcode QRIS resmi yang disematkan pada seluruh faktur tagihan.</p>
+                <div class="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-emerald-600">payments</span>
+                        <div>
+                            <h2 class="text-sm font-bold text-zinc-900 dark:text-white">Rekening Bank &amp; Profil Pembayaran Perusahaan</h2>
+                            <p class="text-[11px] text-zinc-500">Informasi rekening resmi perusahaan dan arsip identitas visual pembayaran.</p>
+                        </div>
                     </div>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                        Automated Gateway: Xendit (.env) Aktif (QRIS, Mandiri VA, BNI VA)
+                    </span>
+                </div>
+
+                <div class="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/50 flex items-start gap-2.5">
+                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px] shrink-0 mt-0.5">info</span>
+                    <p class="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
+                        <strong>Catatan Sistem:</strong> Seluruh transaksi invoice klien kini diproses secara otomatis via <strong>Xendit Payment Gateway</strong> (QRIS Instan, Mandiri VA, BNI VA) yang dikonfigurasi melalui <code>.env</code>. Formulir rekening &amp; gambar QRIS di bawah ini disimpan sebagai profil identitas resmi perusahaan dan cadangan administratif.
+                    </p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -162,7 +175,7 @@
                                 <label class="block text-[11px] text-zinc-600 dark:text-zinc-400">Unggah QRIS Baru (Opsional):</label>
                                 <input type="file" name="qris_image" accept=".jpg,.jpeg,.png,.webp"
                                        class="block w-full text-xs text-zinc-700 dark:text-zinc-300 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-zinc-200 dark:file:bg-zinc-800 hover:file:bg-zinc-300 cursor-pointer">
-                                <p class="text-[10px] text-zinc-500">Tampil otomatis di invoice PDF dan halaman bayar klien.</p>
+                                <p class="text-[10px] text-zinc-500">Tersimpan sebagai arsip identitas visual profil perusahaan. Pembayaran tagihan klien kini diproses otomatis via gateway Xendit.</p>
                             </div>
                         </div>
                     </div>

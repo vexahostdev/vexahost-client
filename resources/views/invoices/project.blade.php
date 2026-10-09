@@ -203,34 +203,42 @@
 </head>
 <body>
 
+@php
+    $logoSrc = !empty($logoBase64) ? $logoBase64 : ($settings->logo_base64 ?? asset('images/logo.png'));
+@endphp
+
 @if(!($isPdf ?? false))
     <!-- Action Bar & Notifications (Web View Only) -->
     @if(session('success'))
-        <div class="flash-alert no-print">
-            [✔] {{ session('success') }}
+        <div class="flash-alert no-print" style="background: #ecfdf5; border-color: #059669; color: #065f46;">
+            {{ session('success') }}
         </div>
     @endif
     @if(session('error'))
-        <div class="flash-alert no-print" style="border-color: #000; background: #fff1f2;">
-            [✕] {{ session('error') }}
+        <div class="flash-alert no-print" style="border-color: #dc2626; background: #fef2f2; color: #991b1b;">
+            {{ session('error') }}
         </div>
     @endif
 
     <div class="action-bar no-print">
-        <div>
+        <div style="display: flex; align-items: center; gap: 12px;">
             <a href="{{ $project->id ? route('projects.show', $project->id) : '#' }}" class="action-btn secondary">
                 &larr; Kembali ke Detail Proyek
             </a>
+            <div style="display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid #e4e4e7;">
+                <img src="{{ asset('images/logo.png') }}" alt="VexaHost" style="height: 26px; width: auto;">
+                <span style="font-size: 13px; font-weight: 800; color: #18181b;">Vexa<span style="color: #059669;">Host</span></span>
+            </div>
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
             @php
-                $waShareText = rawurlencode("Halo Kak {$lead?->nama_kontak},\n\nBerikut rincian Invoice resmi untuk proyek *{$project->nama_project}*:\nNomor: {$invoiceNumber}\nTotal: Rp " . number_format($project->harga, 0, ',', '.') . "\nSisa Tagihan: Rp " . number_format($project->sisa_tagihan, 0, ',', '.') . "\n\nTerima kasih atas kerja samanya!\n- VexaHost");
+                $waShareText = rawurlencode("Halo Kak " . ($lead?->nama_kontak ?: $lead?->nama_usaha) . ",\n\nBerikut rincian Invoice resmi untuk proyek *{$project->nama_project}*:\nNomor: {$invoiceNumber}\nTotal: Rp " . number_format($project->harga, 0, ',', '.') . "\nSisa Tagihan: Rp " . number_format($project->sisa_tagihan, 0, ',', '.') . "\n\nTerima kasih atas kerja samanya!\n- VexaHost");
                 $waPhone = preg_replace('/[^0-9]/', '', $lead?->kontak_wa ?? '');
             @endphp
             @if($project->id)
                 <form id="formSendWaProject" action="{{ route('invoices.project.send-wa', $project->id) }}" method="POST" style="display: inline; margin: 0;">
                     @csrf
-                    <button type="button" onclick="Swal.fire({ text: 'Kirim dokumen PDF Invoice ini langsung ke nomor WhatsApp {{ $lead?->kontak_wa }} via VexaHost WA Gateway?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Kirim', cancelButtonText: 'Batal', confirmButtonColor: '#C2410C', cancelButtonColor: '#71717a', reverseButtons: true }).then((r) => { if (r.isConfirmed) document.getElementById('formSendWaProject').submit(); })" class="action-btn">
+                    <button type="button" style="background: #059669; border-color: #059669;" onclick="Swal.fire({ text: 'Kirim dokumen PDF Invoice ini langsung ke nomor WhatsApp {{ $lead?->kontak_wa }} via VexaHost WA Gateway?', icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Kirim', cancelButtonText: 'Batal', confirmButtonColor: '#059669', cancelButtonColor: '#71717a', reverseButtons: true }).then((r) => { if (r.isConfirmed) document.getElementById('formSendWaProject').submit(); })" class="action-btn">
                         Kirim PDF via WhatsApp
                     </button>
                 </form>
@@ -260,9 +268,9 @@
             <td style="width: 60%;">
                 <table style="width: 100%;">
                     <tr>
-                        @if(!empty($logoBase64))
+                        @if(!empty($logoSrc))
                             <td style="width: 65px; vertical-align: middle;">
-                                <img src="{{ $logoBase64 }}" alt="Logo" style="height: 55px; width: auto;" />
+                                <img src="{{ $logoSrc }}" alt="VexaHost Logo" style="height: 55px; width: auto;" />
                             </td>
                         @endif
                         <td style="vertical-align: middle; padding-left: 8px;">
@@ -369,40 +377,8 @@
     <!-- Calculation & Payment Breakdown -->
     <table style="width: 100%; margin-top: 5px;">
         <tr>
-            <!-- Left: Payment Instructions & QRIS -->
-            <td style="width: 55%; vertical-align: top; padding-right: 15px;">
-                <div class="payment-box">
-                    <table style="width: 100%;">
-                        <tr>
-                            @if(!empty($qrisBase64))
-                                <td style="width: 105px; vertical-align: top; text-align: center;">
-                                    <img src="{{ $qrisBase64 }}" alt="QRIS" class="qris-img" />
-                                    <div style="font-size: 7.5pt; font-weight: bold; text-transform: uppercase; margin-top: 3px;">
-                                        SCAN QRIS RESMI
-                                    </div>
-                                </td>
-                            @endif
-                            <td style="vertical-align: top; padding-left: 8px;">
-                                <div style="font-size: 8.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
-                                    REKENING PEMBAYARAN RESMI:
-                                </div>
-                                <div style="font-size: 9.5pt; font-weight: bold; margin-top: 4px;">
-                                    {{ $settings->bank_name ?? '-' }}
-                                </div>
-                                <div style="font-size: 11pt; font-weight: 900; letter-spacing: 0.5px; margin-top: 1px;">
-                                    {{ $settings->bank_account_number ?? '-' }}
-                                </div>
-                                <div style="font-size: 8.5pt; color: #333333; margin-top: 1px;">
-                                    a.n {{ $settings->bank_account_holder ?? '-' }}
-                                </div>
-                                <div style="font-size: 7.5pt; color: #555555; margin-top: 6px; line-height: 1.3;">
-                                    Konfirmasi bukti transfer / struk QRIS dapat dikirimkan ke WhatsApp resmi atau diunggah pada Client Panel.
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </td>
+            <!-- Left Spacer -->
+            <td style="width: 55%; vertical-align: top; padding-right: 15px;"></td>
 
             <!-- Right: Subtotal, DP, and Balance Due -->
             <td style="width: 45%; vertical-align: top;">

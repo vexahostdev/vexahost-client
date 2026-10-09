@@ -191,29 +191,37 @@
 </head>
 <body>
 
+@php
+    $logoSrc = !empty($logoBase64) ? $logoBase64 : ($settings->logo_base64 ?? asset('images/logo.png'));
+@endphp
+
 @if(!($isPdf ?? false))
     <!-- Action Bar & Notifications (Web View Only) -->
     @if(session('success'))
-        <div class="flash-alert no-print">
-            [✔] {{ session('success') }}
+        <div class="flash-alert no-print" style="background: #ecfdf5; border-color: #059669; color: #065f46;">
+            {{ session('success') }}
         </div>
     @endif
     @if(session('error'))
-        <div class="flash-alert no-print" style="border-color: #000; background: #fff1f2;">
-            [✕] {{ session('error') }}
+        <div class="flash-alert no-print" style="border-color: #dc2626; background: #fef2f2; color: #991b1b;">
+            {{ session('error') }}
         </div>
     @endif
 
     <div class="action-bar no-print">
-        <div>
+        <div style="display: flex; align-items: center; gap: 12px;">
             <a href="{{ isset($invoice) ? route('invoices.show', $invoice->id) : route('invoices.index') }}" class="action-btn secondary">
                 &larr; Kembali ke Detail Tagihan
             </a>
+            <div style="display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid #e4e4e7;">
+                <img src="{{ asset('images/logo.png') }}" alt="VexaHost" style="height: 26px; width: auto;">
+                <span style="font-size: 13px; font-weight: 800; color: #18181b;">Vexa<span style="color: #059669;">Host</span></span>
+            </div>
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
             @php
                 $cleanReceiptNo = str_replace('/', '-', $receiptNumber);
-                $waShareText = rawurlencode("Halo Kak {$lead?->nama_kontak},\n\nTerima kasih! Pembayaran {$payment->jenis_label} untuk proyek *{$project?->nama_project}* telah terverifikasi sah.\n\nNomor Kwitansi: {$receiptNumber}\nJumlah: Rp " . number_format($payment->jumlah, 0, ',', '.') . "\nStatus: LUNAS & TERVERIFIKASI\n\nSalam,\nVexaHost");
+                $waShareText = rawurlencode("Halo Kak " . ($lead?->nama_kontak ?: $lead?->nama_usaha) . ",\n\nTerima kasih! Pembayaran {$payment->jenis_label} untuk proyek *{$project?->nama_project}* telah terverifikasi sah.\n\nNomor Kwitansi: {$receiptNumber}\nJumlah: Rp " . number_format($payment->jumlah, 0, ',', '.') . "\nStatus: LUNAS & TERVERIFIKASI\n\nSalam,\nVexaHost");
                 $waPhone = preg_replace('/[^0-9]/', '', $lead?->kontak_wa ?? '');
             @endphp
             @if(!empty($waPhone))
@@ -227,7 +235,7 @@
             <a href="{{ route('invoices.receipt', ['invoice' => $invoice->id ?? $payment->id, 'format' => 'word']) }}" class="action-btn secondary">
                 Download Word
             </a>
-            <button onclick="window.print()" class="action-btn" style="background: #2563eb; border-color: #2563eb;">
+            <button onclick="window.print()" class="action-btn" style="background: #059669; border-color: #059669;">
                 Cetak Kwitansi
             </button>
         </div>
@@ -243,9 +251,9 @@
             <td style="width: 58%;">
                 <table style="width: 100%;">
                     <tr>
-                        @if(!empty($logoBase64))
+                        @if(!empty($logoSrc))
                             <td style="width: 65px; vertical-align: middle;">
-                                <img src="{{ $logoBase64 }}" alt="Logo" style="height: 55px; width: auto;" />
+                                <img src="{{ $logoSrc }}" alt="VexaHost Logo" style="height: 55px; width: auto;" />
                             </td>
                         @endif
                         <td style="vertical-align: middle; padding-left: 8px;">

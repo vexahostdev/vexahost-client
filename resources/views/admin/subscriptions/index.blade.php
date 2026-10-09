@@ -481,7 +481,7 @@
                     Memperpanjang: <strong class="text-zinc-900 dark:text-white" x-text="renewSubscription.project_name"></strong>
                 </p>
 
-                <form method="POST" :action="`{{ url('/subscriptions') }}/${renewSubscription.id}/renew`" class="space-y-4">
+                <form method="POST" :action="`{{ url('/admin/subscriptions') }}/${renewSubscription.id}/renew`" class="space-y-4">
                     @csrf
 
                     <!-- Tipe Perpanjangan -->

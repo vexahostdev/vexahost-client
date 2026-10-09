@@ -206,33 +206,39 @@
 </head>
 <body>
 
+    @php
+        $logoSrc = !empty($logoBase64) ? $logoBase64 : ($settings->logo_base64 ?? asset('images/logo.png'));
+    @endphp
+
     @if(!($isPdf ?? false))
     <!-- Action Bar (Web Only) -->
     <div class="action-bar no-print">
-        <div>
-            @if(Route::has('projects.show'))
+        <div style="display: flex; align-items: center; gap: 12px;">
             <a href="{{ route('admin.projects.show', $project->id) }}" class="action-btn secondary">
                 &larr; Kembali ke Proyek
             </a>
-            @endif
+            <div style="display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid #e4e4e7;">
+                <img src="{{ asset('images/logo.png') }}" alt="VexaHost" style="height: 26px; width: auto;">
+                <span style="font-size: 13px; font-weight: 800; color: #18181b;">Vexa<span style="color: #059669;">Host</span></span>
+            </div>
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
             <button onclick="window.print()" class="action-btn secondary">
-                &#128438; Cetak / Print
+                Cetak / Print
             </button>
-            @if(Route::has('invoices.settlement'))
             <a href="{{ route('admin.invoices.settlement', [$project->id, 'format' => 'pdf']) }}" class="action-btn">
-                &#128196; Download PDF
+                Download PDF
             </a>
             <a href="{{ route('admin.invoices.settlement', [$project->id, 'format' => 'word']) }}" class="action-btn secondary">
-                &#128196; Download Word
+                Download Word
             </a>
-            @endif
             @php
                 $brandName = $settings->brand_name ?? 'VexaHost';
-                $bankStr = $settings->bank_info_string ?? '';
+                $invoiceModel = $project->latestInvoice ?: $project->invoices()->first();
+                $directPayUrl = $invoiceModel?->payment_token ? route('invoices.pay', $invoiceModel->payment_token) : null;
                 $settleNo = $settlementNumber ?? ('INV-SETTLE/' . ($project->created_at ? $project->created_at->format('Ym') : now()->format('Ym')) . '/' . str_pad($project->id, 4, '0', STR_PAD_LEFT));
-                $waShareText = rawurlencode("Halo Kak {$lead?->nama_kontak},\n\nBerikut rincian Invoice Tagihan Pelunasan resmi untuk proyek *{$project->nama_project}*:\n• Nomor Dokumen: {$settleNo}\n• Total Nilai Proyek: Rp " . number_format($project->harga, 0, ',', '.') . "\n• DP Diterima: Rp " . number_format($project->total_paid, 0, ',', '.') . "\n• Sisa Tagihan Pelunasan: Rp " . number_format($project->remaining_balance, 0, ',', '.') . "\n\n💳 Pembayaran resmi dapat ditransfer ke:\n🏦 {$bankStr}\n\nTerima kasih banyak atas kerjasamanya!\n- {$brandName}");
+                $payMsg = $directPayUrl ? "\n\n⚡ Link Pelunasan Langsung (Tanpa Login):\n👉 {$directPayUrl}\n\n✨ Metode Otomatis: QRIS Semua Bank/E-Wallet & Virtual Account Mandiri/BNI (24 Jam Instan)" : "";
+                $waShareText = rawurlencode("Halo Kak " . ($lead?->nama_kontak ?: $lead?->nama_usaha) . ",\n\nBerikut rincian Invoice Tagihan Pelunasan resmi untuk proyek *{$project->nama_project}*:\n• Nomor Dokumen: {$settleNo}\n• Total Nilai Proyek: Rp " . number_format($project->harga, 0, ',', '.') . "\n• DP Diterima: Rp " . number_format($project->total_paid, 0, ',', '.') . "\n• Sisa Tagihan Pelunasan: Rp " . number_format($project->remaining_balance, 0, ',', '.') . "{$payMsg}\n\nKwitansi lunas bertanda tangan digital terbit seketika tanpa perlu konfirmasi manual. Terima kasih banyak!\n- {$brandName}");
                 $waPhone = preg_replace('/[^0-9]/', '', $lead?->kontak_wa ?? '');
             @endphp
             @if(!empty($waPhone))
@@ -240,11 +246,24 @@
                 Teks WA
             </a>
             @endif
-            @if(Route::has('invoices.settlement.send-wa') && $lead && !empty($lead->kontak_wa))
+            @if(!empty($directPayUrl))
+            <a href="{{ $directPayUrl }}" target="_blank" class="action-btn secondary" style="color: #059669; border-color: #6ee7b7; background: #ecfdf5;">
+                ⚡ Buka Halaman Bayar
+            </a>
+            @endif
+            @if($lead && !empty($lead->kontak_wa))
             <form id="formSendWaSettlement" action="{{ route('admin.invoices.settlement.send-wa', $project->id) }}" method="POST" style="margin: 0;">
                 @csrf
-                <button type="button" class="action-btn" style="background: #059669; border-color: #059669;" onclick="Swal.fire({title:'Konfirmasi',text:'Kirim dokumen PDF Tagihan Pelunasan ini langsung ke WhatsApp klien ({{ $lead->kontak_wa }})?',icon:'question',showCancelButton:true,confirmButtonText:'Ya, Kirim',cancelButtonText:'Batal',confirmButtonColor:'#C2410C',cancelButtonColor:'#71717a',reverseButtons:true}).then(r=>{if(r.isConfirmed)document.getElementById('formSendWaSettlement').submit()})">
-                    &#128172; Kirim via WhatsApp (PDF)
+                <button type="button" class="action-btn" style="background: #059669; border-color: #059669;" onclick="Swal.fire({title:'Konfirmasi WhatsApp',text:'Kirim dokumen PDF Tagihan Pelunasan dan tautan pembayaran langsung ke WhatsApp klien ({{ $lead->kontak_wa }})?',icon:'question',showCancelButton:true,confirmButtonText:'Ya, Kirim WA',cancelButtonText:'Batal',confirmButtonColor:'#059669',cancelButtonColor:'#71717a',reverseButtons:true}).then(r=>{if(r.isConfirmed)document.getElementById('formSendWaSettlement').submit()})">
+                    Kirim via WhatsApp (PDF)
+                </button>
+            </form>
+            @endif
+            @if($lead && !empty($lead->email))
+            <form id="formSendEmailSettlement" action="{{ route('admin.invoices.settlement.send-email', $project->id) }}" method="POST" style="margin: 0;">
+                @csrf
+                <button type="button" class="action-btn" style="background: #0284c7; border-color: #0284c7;" onclick="Swal.fire({title:'Konfirmasi Email',text:'Kirim dokumen PDF Tagihan Pelunasan dan link pembayaran langsung ke email klien ({{ $lead->email }})?',icon:'question',showCancelButton:true,confirmButtonText:'Ya, Kirim Email',cancelButtonText:'Batal',confirmButtonColor:'#0284c7',cancelButtonColor:'#71717a',reverseButtons:true}).then(r=>{if(r.isConfirmed)document.getElementById('formSendEmailSettlement').submit()})">
+                    Kirim via Email (PDF)
                 </button>
             </form>
             @endif
@@ -268,13 +287,27 @@
         <table class="header-table">
             <tr>
                 <td style="width: 58%;">
-                    <div style="font-size: 14pt; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">
-                        {{ $settings->company_name ?? 'PT DESTINARA CHAKRAWALA ARTHA' }}
-                    </div>
-                    <div style="font-size: 9pt; color: #444444; margin-top: 3px; line-height: 1.35;">
-                        {{ $settings->tagline ?? ($settings->brand_name ?? 'Software House & Digital Solutions') }}<br>
-                        {{ $settings->domicile_city ?? 'Jakarta' }}, Indonesia<br>
-                        WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }} | Email: {{ $settings->email_company ?? ($settings->email_support ?? 'vexahostcloudtech@gmail.com') }}
+                    <table style="width: 100%;">
+                        <tr>
+                            @if(!empty($logoSrc))
+                                <td style="width: 65px; vertical-align: middle;">
+                                    <img src="{{ $logoSrc }}" alt="VexaHost Logo" style="height: 55px; width: auto;" />
+                                </td>
+                            @endif
+                            <td style="vertical-align: middle; padding-left: 8px;">
+                                <div style="font-size: 13pt; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">
+                                    {{ $settings->company_name ?? 'PT DESTINARA CHAKRAWALA ARTHA' }}
+                                </div>
+                                <div style="font-size: 8.5pt; font-weight: 600; color: #444444; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    {{ $settings->tagline ?? ($settings->brand_name ?? 'Software House & Digital Solutions') }}
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                    <div style="font-size: 8.5pt; color: #333333; margin-top: 8px; line-height: 1.4;">
+                        Email: {{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }} | {{ $settings->email_company ?? 'vexahostcloudtech@gmail.com' }}<br>
+                        Website: {{ $settings->website_url ?? 'https://vexahostcloud.my.id' }}<br>
+                        WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }}{{ !empty($settings->phone_support_2) ? ' / ' . $settings->phone_support_2 : '' }}
                     </div>
                 </td>
                 <td style="width: 42%; text-align: right;">
@@ -425,37 +458,6 @@
                 </td>
             </tr>
         </table>
-
-        <!-- Payment Instructions & QRIS Box (strictly from CompanySetting) -->
-        <div class="payment-box">
-            <table style="width: 100%;">
-                <tr>
-                    <td style="width: 75%; vertical-align: top;">
-                        <div style="font-size: 9.5pt; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">
-                            METODE &amp; INSTRUKSI PEMBAYARAN PELUNASAN
-                        </div>
-                        <div style="font-size: 9pt; line-height: 1.45; color: #222222;">
-                            Pembayaran dapat ditransfer langsung ke rekening resmi:
-                            <div style="font-size: 10pt; font-weight: bold; margin: 4px 0; font-family: monospace; background: #ffffff; border: 1px solid #d4d4d8; padding: 6px 10px; display: inline-block;">
-                                {{ $settings->bank_info_string ?? (($settings->bank_name ?? '-') . ' ' . ($settings->bank_account_number ?? '-') . ' a.n ' . ($settings->bank_account_holder ?? '-')) }}
-                            </div><br>
-                            Atau scan QRIS resmi di samping melalui aplikasi BCA, Livin, BRImo, Dana, OVO, atau GoPay.<br>
-                            Konfirmasi bukti transfer via WhatsApp ke <strong>{{ $settings->phone_support ?? '0858-0874-9131' }}</strong> atau unggah di Client Panel.
-                        </div>
-                    </td>
-                    <td style="width: 25%; text-align: center; vertical-align: middle;">
-                        @if(!empty($qrisBase64))
-                            <img src="{{ $qrisBase64 }}" alt="QRIS" class="qris-img">
-                            <div style="font-size: 7.5pt; font-weight: bold; margin-top: 2px;">SCAN QRIS RESMI</div>
-                        @else
-                            <div style="border: 1px dashed #999; padding: 15px 5px; font-size: 8pt; color: #666;">
-                                QRIS Tersedia<br>via WhatsApp
-                            </div>
-                        @endif
-                    </td>
-                </tr>
-            </table>
-        </div>
 
         <!-- Terms and Signatures (strictly from CompanySetting) -->
         <table class="sign-table">

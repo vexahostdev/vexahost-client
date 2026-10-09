@@ -71,10 +71,64 @@ class InvoiceController extends Controller
         }
 
         $invoice->load(['project', 'client', 'verifier']);
+        if ($invoice->status !== 'paid' && !empty($invoice->payment_reference)) {
+            \App\Services\Payment\XenditService::checkAndSyncStatus($invoice);
+        }
         $settings = \App\Models\CompanySetting::get();
         $bankInfo = $settings->bank_info_string;
 
         return view('invoices.show', compact('invoice', 'bankInfo', 'isAdmin', 'settings'));
+    }
+
+    /**
+     * Inisialisasi pembayaran otomatis via gateway Xendit untuk Client Invoice.
+     * Hanya mendukung 3 metode: QRIS, MANDIRI VA, BNI VA.
+     */
+    public function payWithXendit(Request $request, Invoice $invoice)
+    {
+        $user = auth()->user();
+        $isAdmin = $user->hasRole('admin') || $user->can('invoices.manage');
+
+        if (!$isAdmin && $invoice->client_id !== $user->id) {
+            abort(403, 'Anda tidak memiliki hak untuk membayar invoice ini.');
+        }
+
+        if ($invoice->status === 'paid') {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Tagihan ini sudah lunas.'], 400);
+            }
+            return back()->with('info', 'Tagihan ini sudah lunas.');
+        }
+
+        $validated = $request->validate([
+            'payment_type' => 'required|in:dp,full',
+            'channel'      => 'nullable|string|in:online_payment,all,qris,mandiri_va,bni_va,mandiri,bni',
+        ]);
+
+        $paymentType = $validated['payment_type'];
+        if ($invoice->status === 'partially_paid') {
+            $paymentType = 'full';
+        }
+
+        $channel = $validated['channel'] ?? 'online_payment';
+
+        $result = \App\Services\Payment\XenditService::createInvoice($invoice, $paymentType, $channel);
+
+        if (!$result['success']) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $result['error']], 422);
+            }
+            return back()->with('error', $result['error']);
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success'     => true,
+                'invoice_url' => $result['invoice_url'],
+            ]);
+        }
+
+        return redirect()->away($result['invoice_url']);
     }
 
     /**

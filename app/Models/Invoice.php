@@ -10,8 +10,10 @@ class Invoice extends Model
 {
     protected $fillable = [
         'project_id',
+        'subscription_id',
         'client_id',
         'invoice_number',
+        'payment_token',
         'title',
         'amount',
         'paid_amount',
@@ -19,6 +21,9 @@ class Invoice extends Model
         'status',
         'due_date',
         'payment_method',
+        'payment_url',
+        'payment_reference',
+        'payment_payload',
         'payment_type',
         'payment_amount_transferred',
         'payment_proof',
@@ -28,12 +33,22 @@ class Invoice extends Model
         'verified_by',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Invoice $invoice) {
+            if (empty($invoice->payment_token)) {
+                $invoice->payment_token = bin2hex(random_bytes(20));
+            }
+        });
+    }
+
     protected $casts = [
         'amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'balance_due' => 'decimal:2',
         'payment_amount_transferred' => 'decimal:2',
         'due_date' => 'date',
+        'payment_payload' => 'array',
         'payment_proof_uploaded_at' => 'datetime',
         'verified_at' => 'datetime',
     ];
@@ -41,6 +56,11 @@ class Invoice extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(MaintenanceSubscription::class, 'subscription_id');
     }
 
     public function client(): BelongsTo
@@ -51,6 +71,19 @@ class Invoice extends Model
     public function verifier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    /**
+     * Get or generate secure public payment URL for this invoice (No Login Required).
+     */
+    public function getDirectPaymentUrl(): string
+    {
+        if (empty($this->payment_token)) {
+            $this->payment_token = bin2hex(random_bytes(20));
+            $this->saveQuietly();
+        }
+
+        return route('invoices.pay', $this->payment_token);
     }
 
     /**

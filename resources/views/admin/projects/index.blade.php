@@ -206,7 +206,7 @@
                     </button>
                 </div>
 
-                <form method="POST" :action="'/projects/' + activeProject.id + '/status'" class="space-y-4">
+                <form method="POST" :action="'/admin/projects/' + activeProject.id + '/status'" class="space-y-4">
                     @csrf
 
                     <div>

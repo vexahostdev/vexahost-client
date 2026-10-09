@@ -52,6 +52,16 @@
                         </form>
                     @endif
 
+                    @php
+                        $activeInvoice = $project->latestInvoice ?: $project->invoices()->first();
+                        $directPayUrl = $activeInvoice?->payment_token ? route('invoices.pay', $activeInvoice->payment_token) : null;
+                    @endphp
+                    @if($directPayUrl)
+                        <a href="{{ $directPayUrl }}" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition-all shadow-sm hover:shadow active:scale-95" title="Buka halaman pembayaran langsung (Tanpa Login / Guest Checkout)">
+                            <span class="material-symbols-outlined text-[18px]">bolt</span>
+                            <span>Halaman Bayar (Tanpa Login)</span>
+                        </a>
+                    @endif
                     <a href="{{ route('admin.invoices.project', $project) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 hover:border-emerald-500 text-xs font-bold transition-all shadow-sm">
                         <span class="material-symbols-outlined text-[18px] text-emerald-600">receipt_long</span>
                         <span>Lihat &amp; Cetak Invoice</span>
@@ -135,8 +145,31 @@
                     </div>
                 </div>
 
+                @if($directPayUrl)
+                    <div class="mt-6 pt-5 border-t border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-orange-50/70 dark:bg-orange-950/30 p-3.5 rounded-xl border border-orange-200/80 dark:border-orange-800/50">
+                        <div class="flex items-center gap-2.5 text-xs text-zinc-700 dark:text-zinc-300">
+                            <span class="material-symbols-outlined text-orange-600 text-[20px]">bolt</span>
+                            <div>
+                                <span class="font-bold text-zinc-900 dark:text-white">Link Pembayaran Langsung Klien (Tanpa Perlu Login):</span>
+                                <span class="text-zinc-500 dark:text-zinc-400 block sm:inline sm:ml-1">Mendukung QRIS, Mandiri VA &amp; BNI VA (Otomatis 24 Jam)</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" readonly value="{{ $directPayUrl }}" class="w-full sm:w-72 text-xs font-mono bg-white dark:bg-zinc-900 border border-orange-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-zinc-800 dark:text-zinc-200 select-all focus:outline-none">
+                            <button type="button" onclick="navigator.clipboard.writeText('{{ $directPayUrl }}'); VhSwal.toast('Link pembayaran langsung berhasil disalin!', 'success')" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-orange-300 dark:border-zinc-700 text-orange-700 dark:text-orange-300 text-xs font-bold hover:bg-orange-100 transition-all cursor-pointer shrink-0">
+                                <span class="material-symbols-outlined text-[15px]">content_copy</span>
+                                <span>Salin</span>
+                            </button>
+                            <a href="{{ $directPayUrl }}" target="_blank" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition-all shrink-0">
+                                <span>Buka Link</span>
+                                <span class="material-symbols-outlined text-[15px]">open_in_new</span>
+                            </a>
+                        </div>
+                    </div>
+                @endif
+
                 @if($project->link_website)
-                    <div class="mt-6 pt-5 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 bg-zinc-50/80 dark:bg-zinc-800/40 p-3.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/50">
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 bg-zinc-50/80 dark:bg-zinc-800/40 p-3.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/50">
                         <div class="flex items-center gap-2.5 text-xs text-zinc-700 dark:text-zinc-300">
                             <span class="material-symbols-outlined text-emerald-600 text-[20px]">language</span>
                             <div>

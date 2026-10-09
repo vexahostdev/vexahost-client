@@ -35,12 +35,32 @@ Route::get('/dashboard', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Webhook VexaHost WA Gateway (CSRF dikecualikan di bootstrap/app.php)
+| Webhook VexaHost WA Gateway & Xendit (CSRF dikecualikan di bootstrap/app.php)
 |--------------------------------------------------------------------------
 */
 
 Route::post('/webhook/whatsapp', [WhatsAppWebhookController::class, 'handle'])->name('webhook.whatsapp');
 Route::post('/api/webhook/whatsapp', [WhatsAppWebhookController::class, 'handle']);
+Route::match(['get', 'post'], '/api/payment/xendit/callback', [\App\Http\Controllers\Api\XenditWebhookController::class, 'handle'])
+    ->name('api.payment.xendit.callback');
+Route::match(['get', 'post'], '/api/payment/xendit/webhook', [\App\Http\Controllers\Api\XenditWebhookController::class, 'handle'])
+    ->name('api.payment.xendit.webhook');
+Route::match(['get', 'post'], '/api/webhooks/xendit', [\App\Http\Controllers\Api\XenditWebhookController::class, 'handle'])
+    ->name('api.webhooks.xendit');
+Route::match(['get', 'post'], '/payment/xendit/webhook', [\App\Http\Controllers\Api\XenditWebhookController::class, 'handle']);
+
+/*
+|--------------------------------------------------------------------------
+| Public Invoice Payment Routes (Tanpa Perlu Login / Guest Checkout)
+|--------------------------------------------------------------------------
+*/
+Route::get('/pay/{token}', [\App\Http\Controllers\PublicInvoicePaymentController::class, 'show'])->name('invoices.pay');
+Route::post('/pay/{token}/process', [\App\Http\Controllers\PublicInvoicePaymentController::class, 'process'])->name('invoices.pay.process');
+Route::get('/pay/{token}/pdf', [\App\Http\Controllers\PublicInvoicePaymentController::class, 'downloadPdf'])->name('invoices.pay.pdf');
+Route::get('/pay/{token}/receipt', [\App\Http\Controllers\PublicInvoicePaymentController::class, 'downloadReceipt'])->name('invoices.pay.receipt');
+Route::post('/pay/{token}/upload-proof', [\App\Http\Controllers\PublicInvoicePaymentController::class, 'uploadProof'])->name('invoices.pay.upload-proof');
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -92,8 +112,10 @@ Route::middleware(['auth', 'verified', 'panel:admin'])->prefix('admin')->name('a
 
         Route::get('/invoices/project/{project}', [Admin\InvoiceController::class, 'projectInvoice'])->name('invoices.project');
         Route::post('/invoices/project/{project}/send-wa', [Admin\InvoiceController::class, 'sendProjectInvoiceWa'])->name('invoices.project.send-wa');
+        Route::post('/invoices/project/{project}/send-email', [Admin\InvoiceController::class, 'sendProjectInvoiceEmail'])->name('invoices.project.send-email');
         Route::get('/invoices/settlement/{project}', [Admin\InvoiceController::class, 'settlementInvoice'])->name('invoices.settlement');
         Route::post('/invoices/settlement/{project}/send-wa', [Admin\InvoiceController::class, 'sendSettlementInvoiceWa'])->name('invoices.settlement.send-wa');
+        Route::post('/invoices/settlement/{project}/send-email', [Admin\InvoiceController::class, 'sendSettlementInvoiceEmail'])->name('invoices.settlement.send-email');
     });
 
     // Pembayaran
@@ -105,6 +127,7 @@ Route::middleware(['auth', 'verified', 'panel:admin'])->prefix('admin')->name('a
 
         Route::get('/invoices/payment/{payment}', [Admin\InvoiceController::class, 'paymentReceipt'])->name('invoices.receipt');
         Route::post('/invoices/payment/{payment}/send-wa', [Admin\InvoiceController::class, 'sendPaymentReceiptWa'])->name('invoices.receipt.send-wa');
+        Route::post('/invoices/payment/{payment}/send-email', [Admin\InvoiceController::class, 'sendPaymentReceiptEmail'])->name('invoices.receipt.send-email');
     });
 
     // Maintenance & Masa Berlaku
@@ -116,6 +139,7 @@ Route::middleware(['auth', 'verified', 'panel:admin'])->prefix('admin')->name('a
         Route::post('/maintenance/{subscription}/reminder', [Admin\MaintenanceController::class, 'sendReminder'])->name('maintenance.reminder');
         Route::get('/invoices/maintenance/{subscription}', [Admin\InvoiceController::class, 'maintenanceInvoice'])->name('invoices.maintenance');
         Route::post('/invoices/maintenance/{subscription}/send-wa', [Admin\InvoiceController::class, 'sendMaintenanceInvoiceWa'])->name('invoices.maintenance.send-wa');
+        Route::post('/invoices/maintenance/{subscription}/send-email', [Admin\InvoiceController::class, 'sendMaintenanceInvoiceEmail'])->name('invoices.maintenance.send-email');
 
         Route::get('/subscriptions', [Admin\ProjectSubscriptionController::class, 'index'])->name('subscriptions.index');
         Route::post('/subscriptions', [Admin\ProjectSubscriptionController::class, 'store'])->name('subscriptions.store');
@@ -252,6 +276,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('invoices/{invoice}/receipt', [InvoiceController::class, 'receipt'])->name('invoices.receipt');
     Route::get('invoices/{invoice}/download-receipt', [InvoiceController::class, 'downloadReceipt'])->name('invoices.download-receipt');
     Route::post('invoices/{invoice}/upload-proof', [InvoiceController::class, 'uploadPaymentProof'])->name('invoices.upload-proof');
+    Route::post('invoices/{invoice}/pay-xendit', [InvoiceController::class, 'payWithXendit'])->name('invoices.pay-xendit');
     Route::post('invoices/{invoice}/verify', [InvoiceController::class, 'verifyPayment'])->name('invoices.verify');
 });
 

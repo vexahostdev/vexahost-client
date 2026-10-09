@@ -125,6 +125,7 @@ class LeadController extends Controller
             'nama_usaha' => 'required|string|max:255',
             'nama_kontak' => 'nullable|string|max:255',
             'kontak_wa' => 'required|string|max:50',
+            'email' => 'nullable|email|max:255',
             'sumber' => 'required|string',
             'status' => 'required|string',
             'paket_diminati' => 'required|string',
@@ -139,7 +140,12 @@ class LeadController extends Controller
 
         // If directly created with Deal status, automatically create the project
         if ($lead->status === 'deal') {
-            $this->createInitialProjectForDeal($lead);
+            $project = $this->createInitialProjectForDeal($lead);
+            try {
+                app(\App\Services\ProjectLifecycleService::class)->provisionClient($project, true);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Pembuatan akun klien otomatis (store deal) gagal: " . $e->getMessage());
+            }
         }
 
         return redirect()->route('admin.leads.show', $lead)->with('success', "Lead {$lead->nama_usaha} berhasil ditambahkan.");
@@ -150,7 +156,7 @@ class LeadController extends Controller
      */
     public function show(Lead $lead)
     {
-        $lead->load(['projects.payments', 'maintenanceSubscriptions', 'messageLogs']);
+        $lead->load(['projects.payments', 'projects.latestInvoice', 'maintenanceSubscriptions', 'messageLogs']);
 
         return view('admin.leads.show', compact('lead'));
     }
@@ -164,6 +170,7 @@ class LeadController extends Controller
             'nama_usaha' => 'required|string|max:255',
             'nama_kontak' => 'nullable|string|max:255',
             'kontak_wa' => 'required|string|max:50',
+            'email' => 'nullable|email|max:255',
             'sumber' => 'required|string',
             'status' => 'required|string',
             'paket_diminati' => 'required|string',
@@ -179,7 +186,26 @@ class LeadController extends Controller
 
         // If status changed to Deal and no project exists yet, auto-create project
         if ($oldStatus !== 'deal' && $lead->status === 'deal' && $lead->projects()->count() === 0) {
-            $this->createInitialProjectForDeal($lead);
+            $project = $this->createInitialProjectForDeal($lead);
+            try {
+                app(\App\Services\ProjectLifecycleService::class)->provisionClient($project, true);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Pembuatan akun klien otomatis (update deal) gagal: " . $e->getMessage());
+            }
+        } else {
+            // If lead already has an unpaid draft project and nilai_nego / paket changed, sync the draft project price & invoice
+            $draftProject = $lead->projects()->where('status', 'draft')->latest()->first();
+            if ($draftProject && $draftProject->total_paid <= 0) {
+                $newEstimatedPrice = $lead->getEstimatedDealPrice();
+                $newPackage = $lead->paket_diminati !== 'belum_tahu' ? $lead->paket_diminati : $draftProject->paket;
+                if ((int) $draftProject->harga !== $newEstimatedPrice || $draftProject->paket !== $newPackage) {
+                    $draftProject->update([
+                        'harga' => $newEstimatedPrice,
+                        'paket' => $newPackage,
+                    ]);
+                    app(\App\Services\ProjectLifecycleService::class)->syncInvoiceForProject($draftProject->fresh());
+                }
+            }
         }
 
         return back()->with('success', "Data lead {$lead->nama_usaha} berhasil diperbarui.");
@@ -312,6 +338,8 @@ class LeadController extends Controller
             'tanggal_mulai' => now()->toDateString(),
             'catatan' => "Dikonversi otomatis dari Lead ID #{$lead->id}." . ($lead->nilai_nego ? " (Harga kesepakatan nego: Rp " . number_format($lead->nilai_nego, 0, ',', '.') . ")" : ''),
         ]);
+
+        app(\App\Services\ProjectLifecycleService::class)->syncInvoiceForProject($project->fresh());
 
         ActivityLogger::log('project_created', "Project otomatis dibuat untuk klien {$lead->nama_usaha} (Paket: {$project->paket_label}, Nilai: Rp " . number_format($project->harga, 0, ',', '.') . ")", 'Project', $project->id);
 

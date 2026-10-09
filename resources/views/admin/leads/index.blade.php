@@ -8,7 +8,7 @@
             
             async updateLeadStatus(leadId, newStatus) {
                 try {
-                    const res = await fetch(`/leads/${leadId}/kanban-status`, {
+                    const res = await fetch(`/admin/leads/${leadId}/kanban-status`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -31,7 +31,7 @@
 
             async quickSnooze(leadId, days) {
                 try {
-                    const res = await fetch(`/leads/${leadId}/quick-followup`, {
+                    const res = await fetch(`/admin/leads/${leadId}/quick-followup`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -702,6 +702,11 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1">Email Klien (Opsional)</label>
+                            <input type="email" name="email" placeholder="Contoh: klien@bisnis.com"
+                                   class="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
+                        </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1">Jadwal Follow-Up</label>
                             <input type="date" name="follow_up_date" 

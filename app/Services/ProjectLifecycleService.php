@@ -113,16 +113,19 @@ class ProjectLifecycleService
         // 5. Undangan WhatsApp
         $waSent = false;
         if ($sendWaInvite && ! empty($user->phone)) {
+            $directPayUrl = ($invoice && $invoice->payment_token) ? route('invoices.pay', $invoice->payment_token) : null;
             $message = $isNewUser && $rawPassword
                 ? PortalWhatsAppTemplates::welcomeClientAccount(
                     name: $user->name,
                     projectName: $project->name,
                     email: $user->email,
                     rawPassword: $rawPassword,
+                    directPayUrl: $directPayUrl,
                 )
                 : PortalWhatsAppTemplates::existingClientNewProject(
                     name: $user->name,
                     projectName: $project->name,
+                    directPayUrl: $directPayUrl,
                 );
 
             $res = $this->waService->sendWhatsApp($user->phone, $message, $lead, 'client_invite');
@@ -153,11 +156,19 @@ class ProjectLifecycleService
     }
 
     /**
+     * Pastikan proyek memiliki data Invoice aktif (dan payment_token) untuk pembayaran langsung.
+     */
+    public function syncInvoiceForProject(Project $project): ?Invoice
+    {
+        return $this->refreshInvoice($project, true);
+    }
+
+    /**
      * Hitung ulang invoice klien dari harga & pembayaran lunas di CRM.
      */
     public function refreshInvoice(Project $project, bool $createIfMissing = false): ?Invoice
     {
-        if (! $project->client_id || $project->harga <= 0) {
+        if ($project->harga <= 0) {
             return null;
         }
 
@@ -189,6 +200,13 @@ class ProjectLifecycleService
         ];
 
         if ($invoice) {
+            if (empty($invoice->payment_token)) {
+                $data['payment_token'] = \Illuminate\Support\Str::random(40);
+            }
+            if ((float) $invoice->amount !== $amount || (float) $invoice->balance_due !== $balance) {
+                $data['payment_url'] = null;
+                $data['payment_reference'] = null;
+            }
             $invoice->update($data);
 
             return $invoice;
@@ -197,6 +215,7 @@ class ProjectLifecycleService
         return Invoice::create($data + [
             'project_id' => $project->id,
             'invoice_number' => $this->invoiceNumberFor($project),
+            'payment_token' => \Illuminate\Support\Str::random(40),
             'due_date' => now()->addDays(7)->toDateString(),
         ]);
     }
