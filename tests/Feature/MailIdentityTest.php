@@ -345,4 +345,58 @@ class MailIdentityTest extends TestCase
             ->expectsOutputToContain('vexahostcloudtech@gmail.com')
             ->assertExitCode(0);
     }
+
+    public function test_admin_recipients_override_replaces_all_config_addresses(): void
+    {
+        $this->settings->update(['email_internal_alert' => 'singleadmin@vexahostcloud.my.id']);
+        MailIdentity::flushCache();
+
+        $recipients = MailIdentity::adminRecipients();
+        $this->assertSame(['singleadmin@vexahostcloud.my.id'], $recipients);
+    }
+
+    public function test_reset_password_notification_has_noreply_from_and_support_reply_to_and_valid_url(): void
+    {
+        Notification::fake();
+
+        $this->client->sendPasswordResetNotification('dummy-reset-token');
+
+        Notification::assertSentTo($this->client, \Illuminate\Auth\Notifications\ResetPassword::class, function ($notification) {
+            $mail = $notification->toMail($this->client);
+            $this->assertSame('noreply@vexahostcloud.my.id', $mail->from[0]);
+            $this->assertSame('support@vexahostcloud.my.id', $mail->replyTo[0][0]);
+            $this->assertStringContainsString('reset-password/dummy-reset-token', $mail->actionUrl);
+            $this->assertStringContainsString(urlencode($this->client->email), $mail->actionUrl);
+            return true;
+        });
+    }
+
+    public function test_verify_email_notification_has_noreply_from_and_support_reply_to_and_valid_url(): void
+    {
+        $notification = new \Illuminate\Auth\Notifications\VerifyEmail();
+        $mail = $notification->toMail($this->client);
+
+        $this->assertSame('noreply@vexahostcloud.my.id', $mail->from[0]);
+        $this->assertSame('support@vexahostcloud.my.id', $mail->replyTo[0][0]);
+        $this->assertStringContainsString('verify-email', $mail->actionUrl);
+    }
+
+    public function test_migration_company_settings_legacy_emails(): void
+    {
+        $settings = CompanySetting::first();
+        $settings->update([
+            'email_support' => 'vexahostcloudtech@gmail.com',
+            'email_company' => 'vexahostcloudtech@gmail.com',
+            'email_internal_alert' => 'vexahostcloudtech@gmail.com',
+        ]);
+
+        $migration = require database_path('migrations/2026_10_13_000002_migrate_company_settings_legacy_emails.php');
+        $migration->up();
+
+        $settings->refresh();
+        $this->assertSame('support@vexahostcloud.my.id', $settings->email_support);
+        $this->assertSame('support@vexahostcloud.my.id', $settings->email_company);
+        $this->assertSame('support@vexahostcloud.my.id,vexahostcloudtech@gmail.com', $settings->email_internal_alert);
+    }
 }
+
