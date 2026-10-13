@@ -7,7 +7,7 @@
     $bankHolder = $settings->bank_account_holder ?: '-';
     $phone1 = $settings->phone_support ?: '0858-0874-9131';
     $phone2 = $settings->phone_support_2;
-    $email = $settings->email_support ?: 'vexahostcloudtech@gmail.com';
+    $email = $settings->email_support ?: \App\Support\MailIdentity::contactEmail();
     $website = $settings->website_url ?: 'https://vexahostcloud.my.id';
     $city = $settings->domicile_city ?: 'Jakarta';
     $portalUrl = config('app.url', 'https://client.vexahostcloud.my.id');

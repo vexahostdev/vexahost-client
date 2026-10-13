@@ -295,7 +295,7 @@
                     </tr>
                 </table>
                 <div style="font-size: 8.5pt; color: #333333; margin-top: 8px; line-height: 1.4;">
-                    Email: {{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }} | {{ $settings->email_company ?? 'vexahostcloudtech@gmail.com' }}<br>
+                    Email: {{ \App\Support\MailIdentity::contactEmail() }} | {{ $settings->email_company ?? \App\Support\MailIdentity::contactEmail() }}<br>
                     Website: {{ $settings->website_url ?? 'https://vexahostcloud.my.id' }}<br>
                     WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }}{{ !empty($settings->phone_support_2) ? ' / ' . $settings->phone_support_2 : '' }}
                 </div>
@@ -400,7 +400,7 @@
                     <strong>Catatan Bukti Pembayaran:</strong><br>
                     1. Kwitansi ini merupakan bukti pembayaran resmi yang sah dan diterbitkan secara digital oleh sistem {{ $settings->company_name ?? 'VexaHost' }}.<br>
                     2. Dokumen ini tidak memerlukan tanda tangan basah dan diakui secara sah oleh manajemen {{ $settings->company_name ?? 'VexaHost' }}.<br>
-                    3. Pertanyaan administrasi: <strong>{{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }}</strong> / WA: <strong>{{ $settings->phone_support ?? '0858-0874-9131' }}</strong>.
+                    3. Pertanyaan administrasi: <strong>{{ \App\Support\MailIdentity::contactEmail() }}</strong> / WA: <strong>{{ $settings->phone_support ?? '0858-0874-9131' }}</strong>.
                 </div>
             </td>
             <td style="width: 40%; text-align: center; vertical-align: bottom;">

@@ -305,7 +305,7 @@
                         </tr>
                     </table>
                     <div style="font-size: 8.5pt; color: #333333; margin-top: 8px; line-height: 1.4;">
-                        Email: {{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }} | {{ $settings->email_company ?? 'vexahostcloudtech@gmail.com' }}<br>
+                        Email: {{ \App\Support\MailIdentity::contactEmail() }} | {{ $settings->email_company ?? \App\Support\MailIdentity::contactEmail() }}<br>
                         Website: {{ $settings->website_url ?? 'https://vexahostcloud.my.id' }}<br>
                         WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }}{{ !empty($settings->phone_support_2) ? ' / ' . $settings->phone_support_2 : '' }}
                     </div>

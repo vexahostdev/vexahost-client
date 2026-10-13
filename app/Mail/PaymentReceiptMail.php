@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 
 class PaymentReceiptMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, SerializesModels, \App\Mail\Concerns\UsesMailIdentity;
 
     public function __construct(
         public Payment $payment,
@@ -29,8 +29,9 @@ class PaymentReceiptMail extends Mailable
     public function envelope(): Envelope
     {
         $brand = $this->settings->brand_name ?: 'VexaHost';
-        return new Envelope(
+        return $this->makeEnvelope(
             subject: "[Kwitansi Resmi] Bukti Pembayaran Sah #{$this->receiptNumber} ({$brand})",
+            senderType: 'noreply'
         );
     }
 

@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 
 class SettlementInvoiceMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, SerializesModels, \App\Mail\Concerns\UsesMailIdentity;
 
     public function __construct(
         public Project $project,
@@ -29,8 +29,9 @@ class SettlementInvoiceMail extends Mailable
     public function envelope(): Envelope
     {
         $brand = $this->settings->brand_name ?: 'VexaHost';
-        return new Envelope(
+        return $this->makeEnvelope(
             subject: "[Tagihan Pelunasan] Invoice #{$this->settlementNumber} - {$this->project->nama_project} ({$brand})",
+            senderType: 'noreply'
         );
     }
 

@@ -91,7 +91,7 @@
                     <tr>
                         <td style="background-color: #fafafa; border-top: 1px solid #e4e4e7; padding: 20px 30px; font-size: 11px; color: #71717a; text-align: center;">
                             <div>&copy; {{ date('Y') }} {{ $settings->company_name ?: 'PT DESTINARA CHAKRAWALA ARTHA' }}. Seluruh hak cipta dilindungi.</div>
-                            <div style="margin-top: 4px;">WhatsApp Tim Finance: {{ $settings->phone_support ?: '0858-0874-9131' }} &bull; Email: {{ $settings->email_support ?: 'vexahostcloudtech@gmail.com' }}</div>
+                            <div style="margin-top: 4px;">WhatsApp Tim Finance: {{ $settings->phone_support ?: '0858-0874-9131' }} &bull; Email: {{ $settings->email_support ?: \App\Support\MailIdentity::contactEmail() }}</div>
                         </td>
                     </tr>
 
