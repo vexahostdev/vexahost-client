@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 
 class MaintenanceInvoiceMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, SerializesModels, \App\Mail\Concerns\UsesMailIdentity;
 
     public function __construct(
         public MaintenanceSubscription $subscription,
@@ -31,8 +31,9 @@ class MaintenanceInvoiceMail extends Mailable
     {
         $brand = $this->settings->brand_name ?: 'VexaHost';
         $clientName = $this->subscription->lead?->nama_usaha ?: ($this->subscription->project?->name ?: 'Website');
-        return new Envelope(
+        return $this->makeEnvelope(
             subject: "[Tagihan Maintenance] Invoice #{$this->invoiceNumber} - {$clientName} ({$brand})",
+            senderType: 'noreply'
         );
     }
 

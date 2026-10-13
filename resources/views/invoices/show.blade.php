@@ -132,7 +132,7 @@
                                 </div>
                                 <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mt-0.5">
                                     Layanan Pembuatan Website, Sistem POS &amp; Aplikasi Digital<br>
-                                    WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }} &bull; Email: {{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }}
+                                    WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }} &bull; Email: {{ $settings->email_support ?? \App\Support\MailIdentity::contactEmail() }}
                                 </p>
                             </div>
                         </div>

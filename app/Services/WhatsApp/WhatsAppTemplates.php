@@ -311,7 +311,7 @@ class WhatsAppTemplates
         $company = $cfg->company_name ?: 'PT DESTINARA CHAKRAWALA ARTHA';
         $phone1 = $cfg->phone_support ?: '0858-0874-9131';
         $phone2 = $cfg->phone_support_2 ? "• WhatsApp Layanan 2: {$cfg->phone_support_2}\n" : '';
-        $email = $cfg->email_support ?: 'vexahostcloudtech@gmail.com';
+        $email = $cfg->email_support ?: \App\Support\MailIdentity::contactEmail();
         $website = $cfg->website_url ?: 'https://vexahostcloud.my.id';
         $city = $cfg->domicile_city ?: 'Jakarta';
 

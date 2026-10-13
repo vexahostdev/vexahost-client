@@ -62,13 +62,12 @@ class TicketController extends Controller
         $recipients = User::role(['admin', 'technician'])->get();
         Notification::send($recipients, new TicketCreatedNotification($ticket));
 
-        // Send Email notification to official Support Email (vexahostcloudtech@gmail.com)
-        $adminNotifyEmail = config('whatsapp.admin_notification_email', env('ADMIN_NOTIFICATION_EMAIL', 'vexahostcloudtech@gmail.com'));
-        if (!empty($adminNotifyEmail)) {
+        // Send Email notification to all Admin Recipients
+        foreach (\App\Support\MailIdentity::adminRecipients() as $adminEmail) {
             try {
-                Notification::route('mail', $adminNotifyEmail)->notify(new TicketCreatedNotification($ticket));
+                Notification::route('mail', $adminEmail)->notify(new TicketCreatedNotification($ticket));
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning("Portal Admin Email Notification Error: " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::warning("Portal Admin Email Notification Error ({$adminEmail}): " . $e->getMessage());
             }
         }
 

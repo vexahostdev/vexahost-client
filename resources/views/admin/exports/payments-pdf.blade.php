@@ -194,7 +194,7 @@
                 <div class="company-tagline">{{ $settings->brand_name ?? 'VexaHost' }} &bull; {{ $settings->tagline ?? 'Software House & Digital Solutions' }}</div>
                 <div class="company-contact">
                     Domisili: {{ $settings->domicile_city ?? 'Jakarta' }} &bull; 
-                    Email: {{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }} &bull; 
+                    Email: {{ $settings->email_support ?? \App\Support\MailIdentity::contactEmail() }} &bull; 
                     WhatsApp: {{ $settings->phone_support ?? '0858-0874-9131' }} &bull; 
                     Web: {{ $settings->website_url ?? 'https://vexahostcloud.my.id' }}
                 </div>

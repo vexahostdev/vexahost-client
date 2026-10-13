@@ -15,7 +15,7 @@ return [
     'api_key' => env('WA_API_KEY', ''),
     'webhook_secret' => env('WA_WEBHOOK_SECRET', ''),
     'admin_phones' => array_values(array_filter(array_map('trim', explode(',', env('WA_ADMIN_PHONES', '085808749131'))))),
-    'admin_notification_email' => env('ADMIN_NOTIFICATION_EMAIL', 'vexahostcloudtech@gmail.com'),
+    'admin_notification_email' => env('ADMIN_NOTIFICATION_EMAIL', env('MAIL_ADMIN_ADDRESSES', 'support@vexahostcloud.my.id,vexahostcloudtech@gmail.com')),
 
     // Harga paket default (IDR)
     'packages' => [

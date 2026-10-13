@@ -177,6 +177,7 @@ Route::middleware(['auth', 'verified', 'panel:admin'])->prefix('admin')->name('a
         Route::get('/settings/company', [Admin\CompanySettingController::class, 'edit'])->name('settings.company.edit');
         Route::put('/settings/company', [Admin\CompanySettingController::class, 'update'])->name('settings.company.update');
         Route::post('/settings/company/test-wa', [Admin\CompanySettingController::class, 'testWhatsApp'])->name('settings.company.test-wa');
+        Route::post('/settings/company/test-mail', [Admin\CompanySettingController::class, 'testMail'])->name('settings.company.test-mail');
     });
 
     // Tiket Masuk (admin inbox)
