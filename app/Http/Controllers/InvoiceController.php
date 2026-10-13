@@ -206,19 +206,27 @@ class InvoiceController extends Controller
 
         // 2. Dispatch Email Alert to Admin
         try {
-            $emailDest = $settings->email_internal_alert ?: 'vexahostcloudtech@gmail.com';
-            Mail::raw(
-                "Halo Tim Finance VexaHost,\n\n"
-                . "Klien {$clientName} telah mengunggah bukti transfer [{$typeLabel}] untuk tagihan {$invoice->invoice_number} ({$projectName}).\n"
-                . "Nominal: Rp {$amountFormatted}\n"
-                . "Catatan Klien: " . ($invoice->payment_notes ?: '-') . "\n\n"
-                . "Silakan login ke Client Panel atau CRM untuk memverifikasi pembayaran ini:\n"
-                . route('invoices.show', $invoice->id) . "\n\n"
-                . "Salam,\nSistem Otomasi Client Panel",
-                function ($m) use ($emailDest, $invoice, $typeLabel) {
-                    $m->to($emailDest)->subject("[Pembayaran Masuk - {$typeLabel}] Bukti Transfer Invoice {$invoice->invoice_number}");
-                }
-            );
+            $adminRecipients = \App\Support\MailIdentity::adminRecipients();
+            $noreply = \App\Support\MailIdentity::noreply();
+            $replyTo = \App\Support\MailIdentity::replyTo();
+
+            foreach ($adminRecipients as $emailDest) {
+                Mail::raw(
+                    "Halo Tim Finance VexaHost,\n\n"
+                    . "Klien {$clientName} telah mengunggah bukti transfer [{$typeLabel}] untuk tagihan {$invoice->invoice_number} ({$projectName}).\n"
+                    . "Nominal: Rp {$amountFormatted}\n"
+                    . "Catatan Klien: " . ($invoice->payment_notes ?: '-') . "\n\n"
+                    . "Silakan login ke Client Panel atau CRM untuk memverifikasi pembayaran ini:\n"
+                    . route('invoices.show', $invoice->id) . "\n\n"
+                    . "Salam,\nSistem Otomasi Client Panel",
+                    function ($m) use ($emailDest, $invoice, $typeLabel, $noreply, $replyTo) {
+                        $m->to($emailDest)
+                            ->from($noreply['address'], $noreply['name'])
+                            ->replyTo($replyTo['address'], $replyTo['name'])
+                            ->subject("[Pembayaran Masuk - {$typeLabel}] Bukti Transfer Invoice {$invoice->invoice_number}");
+                    }
+                );
+            }
         } catch (\Throwable $e) {
             Log::warning("Gagal kirim email alert pembayaran ke admin: " . $e->getMessage());
         }

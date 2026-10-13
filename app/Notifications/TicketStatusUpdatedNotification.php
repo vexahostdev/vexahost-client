@@ -30,8 +30,12 @@ class TicketStatusUpdatedNotification extends Notification
         $statusLabel = app(\App\Services\TicketWorkflowService::class)
             ->statusLabel($this->ticket->status);
         $url = route('tickets.index');
+        $support = \App\Support\MailIdentity::support();
+        $replyTo = \App\Support\MailIdentity::replyTo();
 
         return (new \Illuminate\Notifications\Messages\MailMessage)
+            ->from($support['address'], $support['name'])
+            ->replyTo($replyTo['address'], $replyTo['name'])
             ->subject('[UPDATE TIKET #' . $this->ticket->id . '] ' . $this->ticket->title)
             ->greeting('Halo, ' . $notifiable->name . '!')
             ->line('Ada pembaruan status pada tiket Anda: **' . $this->ticket->title . '**')

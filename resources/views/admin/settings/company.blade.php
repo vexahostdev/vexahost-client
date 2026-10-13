@@ -232,38 +232,100 @@
                 </div>
             </div>
 
-            <!-- Section 3: Komunikasi, Email & WhatsApp Alert -->
+            <!-- Section 3: Konfigurasi Email & Identitas Pengirim (Brevo SMTP Domain) -->
             <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs p-6 space-y-5">
-                <div class="flex items-center gap-2.5 pb-4 border-b border-zinc-100 dark:border-zinc-800">
-                    <span class="material-symbols-outlined text-emerald-600">hub</span>
-                    <div>
-                        <h2 class="text-sm font-bold text-zinc-900 dark:text-white">Alamat Kontak &amp; Tujuan Notifikasi Admin</h2>
-                        <p class="text-[11px] text-zinc-500">Pemisahan email domain untuk tampilan publik dan tujuan email/WhatsApp internal untuk alert pemilik.</p>
+                <div class="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-emerald-600">mail</span>
+                        <div>
+                            <h2 class="text-sm font-bold text-zinc-900 dark:text-white">Email &amp; Identitas Pengirim (Domain Brevo SMTP)</h2>
+                            <p class="text-[11px] text-zinc-500">Konfigurasi nama pengirim, email noreply, email support, reply-to, serta daftar penerima notifikasi alert admin.</p>
+                        </div>
+                    </div>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Domain Terverifikasi: {{ implode(', ', \App\Support\MailIdentity::allowedSenderDomains()) }}
+                    </span>
+                </div>
+
+                <div class="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/50 flex items-start gap-2.5">
+                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[18px] shrink-0 mt-0.5">verified_user</span>
+                    <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                        Alamat pengirim (Noreply &amp; Support) wajib berdomain terverifikasi Brevo (<strong>{{ implode(', ', \App\Support\MailIdentity::allowedSenderDomains()) }}</strong>). Kosongkan field jika ingin menggunakan nilai bawaan file <code>.env</code>.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Noreply Sender -->
+                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 space-y-3">
+                        <h3 class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px] text-emerald-600">outbox</span>
+                            Identitas Pengirim Sistem (Noreply)
+                        </h3>
+                        <div>
+                            <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-1">Nama Pengirim Noreply</label>
+                            <input type="text" name="mail_noreply_name" value="{{ old('mail_noreply_name', $settings->mail_noreply_name) }}"
+                                   placeholder="{{ config('mail.from.name', 'VexaHost Build') }}"
+                                   class="w-full text-xs rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">
+                            <span class="text-[10px] text-zinc-400 mt-1 block">Default: {{ config('mail.from.name') }}</span>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-1">Alamat Email Noreply</label>
+                            <input type="email" name="mail_noreply_address" value="{{ old('mail_noreply_address', $settings->mail_noreply_address) }}"
+                                   placeholder="{{ config('mail.from.address', 'noreply@vexahostcloud.my.id') }}"
+                                   class="w-full text-xs font-mono rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">
+                            <span class="text-[10px] text-zinc-400 mt-1 block">Dipakai untuk pengiriman faktur, kwitansi, dan konfirmasi otomatis.</span>
+                        </div>
+                    </div>
+
+                    <!-- Support Sender & Reply-To -->
+                    <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 space-y-3">
+                        <h3 class="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px] text-emerald-600">support_agent</span>
+                            Identitas Pengirim Layanan (Support) &amp; Balasan
+                        </h3>
+                        <div>
+                            <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-1">Nama Pengirim Support</label>
+                            <input type="text" name="mail_support_name" value="{{ old('mail_support_name', $settings->mail_support_name) }}"
+                                   placeholder="{{ config('mail.support.name', 'VexaHost Build Support') }}"
+                                   class="w-full text-xs rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">
+                            <span class="text-[10px] text-zinc-400 mt-1 block">Default: {{ config('mail.support.name') }}</span>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-1">Alamat Email Support Publik</label>
+                            <input type="email" name="email_support" value="{{ old('email_support', $settings->email_support) }}"
+                                   placeholder="{{ config('mail.support.address', 'support@vexahostcloud.my.id') }}"
+                                   class="w-full text-xs font-mono rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">
+                            <span class="text-[10px] text-zinc-400 mt-1 block">Dipakai untuk pembaruan tiket dan kontak bantuan pada dokumen/PDF klien.</span>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-zinc-700 dark:text-zinc-300 mb-1">Alamat Email Reply-To</label>
+                            <input type="email" name="mail_reply_to_address" value="{{ old('mail_reply_to_address', $settings->mail_reply_to_address) }}"
+                                   placeholder="{{ config('mail.reply_to.address', 'support@vexahostcloud.my.id') }}"
+                                   class="w-full text-xs font-mono rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">
+                            <span class="text-[10px] text-zinc-400 mt-1 block">Alamat tujuan saat klien menekan tombol "Balas / Reply" di email mereka.</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">Email Support Publik (Domain) *</label>
-                        <input type="email" name="email_support" value="{{ old('email_support', $settings->email_support) }}" required
-                               class="w-full text-xs rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">
-                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 block">Tampil di dokumen klien: vexahostcloudtech@gmail.com</span>
-                    </div>
-
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                     <div>
                         <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">Email Resmi Perusahaan *</label>
                         <input type="email" name="email_company" value="{{ old('email_company', $settings->email_company) }}" required
                                class="w-full text-xs rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">
-                        <span class="text-[10px] text-zinc-400 mt-1 block">vexahostcloudtech@gmail.com</span>
+                        <span class="text-[10px] text-zinc-400 mt-1 block">Alamat email formal badan hukum perseroan.</span>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">Email Tujuan Alert Internal Admin *</label>
-                        <input type="email" name="email_internal_alert" value="{{ old('email_internal_alert', $settings->email_internal_alert) }}" required
-                               class="w-full text-xs rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">
-                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 block font-medium">Tujuan notifikasi berdering di HP: vexahostcloudtech@gmail.com</span>
+                        <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">Daftar Email Tujuan Alert Internal Admin</label>
+                        <textarea name="email_internal_alert" rows="2"
+                                  placeholder="{{ implode(', ', config('mail.admin_addresses', ['support@vexahostcloud.my.id', 'vexahostcloudtech@gmail.com'])) }}"
+                                  class="w-full text-xs font-mono rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white p-2.5 focus:ring-emerald-500 focus:border-emerald-500">{{ old('email_internal_alert', $settings->email_internal_alert) }}</textarea>
+                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 block font-medium">Bebas domain. Pisahkan tanda koma (,) atau baris baru jika lebih dari satu email tujuan.</span>
                     </div>
+                </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                     <div>
                         <label class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">Nomor WhatsApp Support 1 *</label>
                         <input type="text" name="phone_support" value="{{ old('phone_support', $settings->phone_support) }}" required
@@ -398,6 +460,38 @@
             </form>
         </div>
 
+        <!-- Mini-Form: Uji Coba Pengiriman Email Sinkron (Test Mail) -->
+        <div class="bg-gradient-to-r from-blue-500/10 via-zinc-50 dark:via-zinc-900 to-transparent p-6 rounded-2xl border border-blue-500/30 shadow-xs space-y-3">
+            <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl bg-blue-600 text-white shadow-2xs">
+                    <span class="material-symbols-outlined text-[20px]">mark_email_read</span>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Uji Coba Pengiriman Email Sinkron (Test Mail)</h3>
+                    <p class="text-[11px] text-zinc-500 dark:text-zinc-400">Kirim email tes sinkron untuk memverifikasi relay Brevo SMTP dan header pengirim (From &amp; Reply-To) secara langsung.</p>
+                </div>
+            </div>
+
+            <form action="{{ route('admin.settings.company.test-mail') }}" method="POST" class="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                @csrf
+                <div class="w-full sm:w-48">
+                    <select name="type" required class="w-full text-xs rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white py-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="noreply">Pengirim: Noreply</option>
+                        <option value="support">Pengirim: Support</option>
+                    </select>
+                </div>
+                <div class="relative w-full sm:w-80">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-[18px]">mail</span>
+                    <input type="email" name="target_email" value="{{ old('target_email', auth()->user()->email ?? 'support@vexahostcloud.my.id') }}" required placeholder="email.tujuan@example.com"
+                           class="w-full pl-10 pr-3 py-2 text-xs font-mono rounded-xl border-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs active:scale-95">
+                    <span class="material-symbols-outlined text-[18px]">send</span>
+                    <span>Kirim Email Tes</span>
+                </button>
+            </form>
+        </div>
+
         <!-- ========================================================================= -->
         <!-- USER GUIDE / PANDUAN PENGGUNAAN LENGKAP -->
         <!-- ========================================================================= -->
@@ -473,14 +567,14 @@
                 <div class="p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs space-y-2.5">
                     <div class="flex items-center gap-2 text-amber-600 font-bold text-xs">
                         <span class="material-symbols-outlined text-[20px]">alternate_email</span>
-                        <span>4. Penjelasan Email Support Domain vs Gmail Notifikasi</span>
+                        <span>4. Penjelasan Email Support Domain &amp; Alert Admin</span>
                     </div>
                     <div class="text-xs text-zinc-600 dark:text-zinc-400 space-y-2 leading-relaxed">
                         <p>
-                            <strong>Email Support Publik:</strong> (<code>vexahostcloudtech@gmail.com</code>) adalah email domain resmi yang dilihat klien pada dokumen invoice dan portal agar citra perusahaan Anda terlihat kredibel dan profesional.
+                            <strong>Email Support &amp; Pengirim Domain:</strong> (<code>support@vexahostcloud.my.id</code> / <code>noreply@vexahostcloud.my.id</code>) adalah email resmi berdomain terverifikasi yang tampil ke klien pada dokumen invoice dan notifikasi otomatis agar kredibilitas dan keterkiriman email terjamin.
                         </p>
                         <p>
-                            <strong>Email Notifikasi Internal:</strong> (<code>vexahostcloudtech@gmail.com</code>) adalah email tujuan untuk sistem mengirimkan salinan alert saat ada tiket bantuan baru atau bukti transfer yang diunggah klien, sehingga smartphone Anda langsung berdering seketika.
+                            <strong>Email Tujuan Alert Internal:</strong> (<code>support@vexahostcloud.my.id</code> dan <code>vexahostcloudtech@gmail.com</code>) adalah daftar alamat penerima salinan notifikasi internal saat ada tiket bantuan baru atau pembayaran tagihan klien.
                         </p>
                     </div>
                 </div>

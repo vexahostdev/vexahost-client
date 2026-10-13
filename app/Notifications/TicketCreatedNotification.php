@@ -40,8 +40,12 @@ class TicketCreatedNotification extends Notification
             : route('technician.tickets');
 
         $greetingName = $notifiable->name ?? 'Tim Support VexaHost';
+        $noreply = \App\Support\MailIdentity::noreply();
+        $replyTo = \App\Support\MailIdentity::replyTo();
 
         return (new MailMessage)
+            ->from($noreply['address'], $noreply['name'])
+            ->replyTo($replyTo['address'], $replyTo['name'])
             ->subject('[TIKET BARU #' . $this->ticket->id . '] ' . $this->ticket->title)
             ->greeting('Halo, ' . $greetingName . '!')
             ->line('Ada tiket baru masuk dari klien: **' . ($this->ticket->client?->name ?? 'Klien') . '**')

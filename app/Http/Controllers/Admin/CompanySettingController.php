@@ -28,14 +28,18 @@ class CompanySettingController extends Controller
     {
         $settings = CompanySetting::get();
 
-        $validated = $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'company_name' => 'required|string|max:255',
             'brand_name' => 'required|string|max:255',
             'tagline' => 'nullable|string|max:255',
             'domicile_city' => 'required|string|max:100',
-            'email_support' => 'required|email|max:255',
+            'email_support' => 'nullable|email|max:255',
+            'mail_support_name' => 'nullable|string|max:255',
+            'mail_noreply_address' => 'nullable|email|max:255',
+            'mail_noreply_name' => 'nullable|string|max:255',
+            'mail_reply_to_address' => 'nullable|email|max:255',
             'email_company' => 'required|email|max:255',
-            'email_internal_alert' => 'required|email|max:255',
+            'email_internal_alert' => 'nullable|string|max:1000',
             'website_url' => 'nullable|string|max:255',
             'phone_support' => 'required|string|max:50',
             'phone_support_2' => 'nullable|string|max:50',
@@ -55,8 +59,7 @@ class CompanySettingController extends Controller
         ], [
             'company_name.required' => 'Nama legal perusahaan wajib diisi.',
             'domicile_city.required' => 'Kota domisili dokumen wajib diisi.',
-            'email_support.required' => 'Email support publik wajib diisi.',
-            'email_internal_alert.required' => 'Email notifikasi internal admin wajib diisi.',
+            'email_company.required' => 'Email perusahaan wajib diisi.',
             'bank_name.required' => 'Nama bank wajib diisi.',
             'bank_account_number.required' => 'Nomor rekening bank wajib diisi.',
             'bank_account_holder.required' => 'Nama pemilik rekening wajib diisi.',
@@ -67,6 +70,46 @@ class CompanySettingController extends Controller
             'signature_image.mimes' => 'Format file tanda tangan harus PNG atau WEBP transparan.',
             'signature_image.max' => 'Ukuran file tanda tangan maksimal 3MB.',
         ]);
+
+        $allowedDomains = \App\Support\MailIdentity::allowedSenderDomains();
+        $allowedStr = implode(', ', $allowedDomains);
+
+        $validator->after(function ($validator) use ($request, $allowedDomains, $allowedStr) {
+            if ($noreply = $request->input('mail_noreply_address')) {
+                $domain = strtolower((string) substr(strrchr($noreply, '@'), 1));
+                if (!in_array($domain, $allowedDomains, true)) {
+                    $validator->errors()->add('mail_noreply_address', "Alamat pengirim harus memakai domain terverifikasi: {$allowedStr}");
+                }
+            }
+
+            if ($support = $request->input('email_support')) {
+                $domain = strtolower((string) substr(strrchr($support, '@'), 1));
+                if (!in_array($domain, $allowedDomains, true)) {
+                    $validator->errors()->add('email_support', "Alamat pengirim harus memakai domain terverifikasi: {$allowedStr}");
+                }
+            }
+
+            if ($adminAlerts = $request->input('email_internal_alert')) {
+                $parts = preg_split('/[,\r\n]+/', (string) $adminAlerts);
+                $validEmails = [];
+                foreach ($parts as $part) {
+                    $trimmed = trim($part);
+                    if ($trimmed === '') {
+                        continue;
+                    }
+                    if (!filter_var($trimmed, FILTER_VALIDATE_EMAIL)) {
+                        $validator->errors()->add('email_internal_alert', "Alamat email tidak valid: {$trimmed}");
+                    } else {
+                        $validEmails[] = $trimmed;
+                    }
+                }
+                if (empty($validEmails) && trim($adminAlerts) !== '') {
+                    $validator->errors()->add('email_internal_alert', 'Minimal satu alamat email admin yang valid harus diisi.');
+                }
+            }
+        });
+
+        $validated = $validator->validate();
 
         // Handle QRIS Image Upload
         if ($request->hasFile('qris_image')) {
@@ -102,10 +145,58 @@ class CompanySettingController extends Controller
         }
 
         $settings->update($validated);
+        \App\Support\MailIdentity::flushCache();
 
-        ActivityLogger::log('update_settings', 'Memperbarui profil perusahaan, rekening bank, barcode QRIS, tanda tangan digital, dan integrasi WhatsApp Gateway', 'CompanySetting', $settings->id);
+        ActivityLogger::log('update_settings', 'Memperbarui profil perusahaan, rekening bank, barcode QRIS, tanda tangan digital, identitas email, dan integrasi WhatsApp Gateway', 'CompanySetting', $settings->id);
 
-        return back()->with('success', 'Pengaturan profil perusahaan, rekening pembayaran, QRIS, tanda tangan digital, dan WhatsApp Gateway berhasil diperbarui!');
+        return back()->with('success', 'Pengaturan profil perusahaan, rekening pembayaran, QRIS, tanda tangan digital, email pengirim, dan WhatsApp Gateway berhasil diperbarui!');
+    }
+
+    /**
+     * Send a test email synchronously to verify SMTP delivery and MailIdentity sender.
+     */
+    public function testMail(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|in:noreply,support',
+            'target_email' => 'required|email|max:255',
+        ], [
+            'type.required' => 'Pilih jenis identitas pengirim email tes.',
+            'target_email.required' => 'Alamat email penerima tes wajib diisi.',
+            'target_email.email' => 'Format email penerima tes tidak valid.',
+        ]);
+
+        $type = $request->input('type');
+        $to = $request->input('target_email');
+
+        $identity = $type === 'support' ? \App\Support\MailIdentity::support() : \App\Support\MailIdentity::noreply();
+        $replyTo = \App\Support\MailIdentity::replyTo();
+
+        try {
+            \Illuminate\Support\Facades\Mail::raw(
+                "Ini adalah email uji coba sinkron dari VexaHost Build ({$identity['name']}).\n\n"
+                . "Tipe: {$type}\n"
+                . "Dari: {$identity['name']} <{$identity['address']}>\n"
+                . "Reply-To: {$replyTo['name']} <{$replyTo['address']}>\n"
+                . "Tujuan: {$to}\n"
+                . "Waktu: " . now()->format('Y-m-d H:i:s') . "\n\n"
+                . "Jika Anda menerima email ini, konfigurasi Brevo SMTP dan pengirim domain Anda berfungsi dengan baik.",
+                function ($m) use ($identity, $replyTo, $to, $type) {
+                    $m->to($to)
+                      ->from($identity['address'], $identity['name'])
+                      ->replyTo($replyTo['address'], $replyTo['name'])
+                      ->subject("[TEST] Uji Coba Pengiriman Email ({$type}) - " . config('app.name'));
+                }
+            );
+
+            ActivityLogger::log('test_email', "Uji kirim email ({$type}) ke {$to} berhasil", 'CompanySetting');
+
+            return back()->with('success', "Email tes ({$type}) berhasil dikirim ke {$to} dari {$identity['address']}!");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal mengirim email tes: " . $e->getMessage());
+
+            return back()->with('error', "Gagal mengirim email tes: Terjadi kendala koneksi ke server email relay (SMTP). Pastikan jaringan dan kredensial mailer valid.");
+        }
     }
 
     /**

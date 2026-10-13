@@ -139,7 +139,7 @@
                                         </div>
                                         <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                                             {{ $settings->tagline ?? 'Cloud Hosting, Sistem Informasi & Jasa Pembuatan Website' }}<br>
-                                            WA: {{ $settings->phone_support ?? '0858-0874-9131' }} &bull; Email: {{ $settings->email_support ?? 'vexahostcloudtech@gmail.com' }}
+                                            WA: {{ $settings->phone_support ?? '0858-0874-9131' }} &bull; Email: {{ $settings->email_support ?? \App\Support\MailIdentity::contactEmail() }}
                                         </p>
                                     </div>
                                 </div>
